@@ -56,9 +56,23 @@
     setMotorSpeed(RIGHT, rightSpeed);
   }
 #elif defined L298_MOTOR_DRIVER
+
+  // Manual servo movement code (Remove for normal functioning of ROS Arduino bridge)
+  #include <Servo.h>
+
+
+  Servo servo1;
+  Servo servo2;
+  //
+
   void initMotorController() {
     digitalWrite(RIGHT_MOTOR_ENABLE, HIGH);
     digitalWrite(LEFT_MOTOR_ENABLE, HIGH);
+
+    // Manual servo movement code (Remove for normal functioning of ROS Arduino bridge)
+    servo1.attach(SERVO1_PIN);
+    servo2.attach(SERVO2_PIN);
+    //
   }
   
   void setMotorSpeed(int i, int spd) {
@@ -85,6 +99,17 @@
   void setMotorSpeeds(int leftSpeed, int rightSpeed) {
     setMotorSpeed(LEFT, leftSpeed);
     setMotorSpeed(RIGHT, rightSpeed);
+
+    // Manual servo movement code (Remove for normal functioning of ROS Arduino bridge)
+    if (leftSpeed != 0 || rightSpeed != 0) {
+        servo1.write(90);
+        servo2.write(90);
+    } else {
+        servo1.write(0);
+        servo2.write(0);
+    }
+    //
+
   }
 #else
   #error A motor driver must be selected!
