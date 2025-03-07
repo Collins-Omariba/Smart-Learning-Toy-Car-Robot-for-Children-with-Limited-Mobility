@@ -6,6 +6,7 @@ import logging
 import math
 import time
 import wave
+import subprocess
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
@@ -1245,7 +1246,7 @@ class WakeStreamingSatellite(SatelliteBase):
         self._wake_info_ready = asyncio.Event()
 
     async def event_from_server(self, event: Event) -> None:
-        CUSTOM_LOGGER.debug("Received event from server: %s", event.type)  # Log all incoming events
+        # CUSTOM_LOGGER.debug("Received event from server: %s", event.type)  # Log all incoming events
         """Handle events from the server, managing streaming and conversation state."""
         # Capture synthesized text
         if Synthesize.is_type(event.type):
@@ -1279,6 +1280,19 @@ class WakeStreamingSatellite(SatelliteBase):
             transcript_text = transcript.text.lower()
             _LOGGER.debug("Received transcript: %s", transcript_text)
             CUSTOM_LOGGER.debug("Transcript received: %s", transcript_text)
+            if "move forward" in transcript_text:
+                CUSTOM_LOGGER.info("Detected 'move forward' in transcript, running motor_run.py")
+                try:
+                    result = subprocess.run(
+                        ["python3", "/home/fyp213/motor_run.py"], # NOTE Change this to your specific path
+                        check=True,
+                        capture_output=True,
+                        text=True
+                    )
+                    CUSTOM_LOGGER.info("motor_run.py executed successfully: %s", result.stdout)
+                except subprocess.CalledProcessError as e:
+                    CUSTOM_LOGGER.error("Failed to run motor_run.py: %s, stderr: %s", e, e.stderr)
+
 
 
         # Handle other event types
@@ -1410,4 +1424,7 @@ class WakeStreamingSatellite(SatelliteBase):
                 info.wake = self._wake_info.wake
         except asyncio.TimeoutError:
             _LOGGER.warning("Failed to get info from wake service")
+
+
+
 
