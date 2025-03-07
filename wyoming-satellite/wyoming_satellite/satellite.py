@@ -1359,7 +1359,7 @@ class WakeStreamingSatellite(SatelliteBase):
         elif self.awaiting_response:
             self.is_streaming = True
             _LOGGER.debug("Simulating wake word detection for follow-up")
-            fake_detection = Detection(name="hey_jarvis")
+            fake_detection = Detection(name="hey_jarvis") # NOTE Change this to your specific wake word
             await self.event_to_server(fake_detection.event())
             await self._send_run_pipeline()
             await self.trigger_streaming_start()
