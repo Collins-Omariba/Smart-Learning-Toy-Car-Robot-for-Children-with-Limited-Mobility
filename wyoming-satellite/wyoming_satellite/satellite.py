@@ -35,6 +35,8 @@ from wyoming.tts import Synthesize
 from wyoming.vad import VoiceStarted, VoiceStopped
 from wyoming.wake import Detect, Detection, WakeProcessAsyncClient
 
+from logging.handlers import RotatingFileHandler
+
 from .settings import SatelliteSettings
 from .utils import (
     DebugAudioWriter,
@@ -1192,11 +1194,30 @@ class VadStreamingSatellite(SatelliteBase):
             self.vad_buffer.put(bytes(self.vad_buffer.maxlen))
 
 
-# -----------------------------------------------------------------------------
 
 
 
+# Configure custom logger
+CUSTOM_LOGGER = logging.getLogger("wyoming_custom")
+CUSTOM_LOGGER.setLevel(logging.DEBUG)  # Set to DEBUG for maximum detail
 
+# File handler for custom log file
+file_handler = RotatingFileHandler(
+    "/home/fyp213/wyoming_custom.log", # NOTE Change this to your specific path
+    maxBytes=10*1024*1024,  # 10 MB max size
+    backupCount=3  # Keep 3 backup files
+)
+file_handler.setLevel(logging.DEBUG)
+file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(file_formatter)
+CUSTOM_LOGGER.addHandler(file_handler)
+
+# Console handler (optional, for systemd journal)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)  # Less verbose for journal
+console_formatter = logging.Formatter('%(levelname)s: %(message)s')
+console_handler.setFormatter(console_formatter)
+CUSTOM_LOGGER.addHandler(console_handler)
 
 _LOGGER = logging.getLogger(__name__)
 _WAKE_INFO_TIMEOUT = 5.0
@@ -1224,12 +1245,14 @@ class WakeStreamingSatellite(SatelliteBase):
         self._wake_info_ready = asyncio.Event()
 
     async def event_from_server(self, event: Event) -> None:
+        CUSTOM_LOGGER.debug("Received event from server: %s", event.type)  # Log all incoming events
         """Handle events from the server, managing streaming and conversation state."""
         # Capture synthesized text
         if Synthesize.is_type(event.type):
             synthesize = Synthesize.from_event(event)
             self.last_synthesize_text = synthesize.text
             _LOGGER.debug("Last synthesized text: %s", self.last_synthesize_text)
+            CUSTOM_LOGGER.debug("Synthesized text: %s", self.last_synthesize_text)
 
         # Assistant starts speaking
         if AudioStart.is_type(event.type):
@@ -1250,6 +1273,13 @@ class WakeStreamingSatellite(SatelliteBase):
                 _LOGGER.info("Awaiting user response after question")
             else:
                 self.awaiting_response = False
+
+        if Transcript.is_type(event.type):
+            transcript = Transcript.from_event(event)
+            transcript_text = transcript.text.lower()
+            _LOGGER.debug("Received transcript: %s", transcript_text)
+            CUSTOM_LOGGER.debug("Transcript received: %s", transcript_text)
+
 
         # Handle other event types
         is_run_satellite = RunSatellite.is_type(event.type)
@@ -1380,3 +1410,4 @@ class WakeStreamingSatellite(SatelliteBase):
                 info.wake = self._wake_info.wake
         except asyncio.TimeoutError:
             _LOGGER.warning("Failed to get info from wake service")
+
