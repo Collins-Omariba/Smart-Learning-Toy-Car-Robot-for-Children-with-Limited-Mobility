@@ -6,11 +6,13 @@ import logging
 import math
 import time
 import wave
+import json
 import subprocess
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from typing import Callable, Dict, Final, List, Optional, Set, Union
+from vosk import Model, KaldiRecognizer
 
 from pyring_buffer import RingBuffer
 from wyoming.asr import Transcript
@@ -35,6 +37,8 @@ from wyoming.timer import TimerCancelled, TimerFinished, TimerStarted, TimerUpda
 from wyoming.tts import Synthesize
 from wyoming.vad import VoiceStarted, VoiceStopped
 from wyoming.wake import Detect, Detection, WakeProcessAsyncClient
+
+
 
 from logging.handlers import RotatingFileHandler
 
@@ -1197,234 +1201,109 @@ class VadStreamingSatellite(SatelliteBase):
 
 
 
-
 # Configure custom logger
 CUSTOM_LOGGER = logging.getLogger("wyoming_custom")
-CUSTOM_LOGGER.setLevel(logging.DEBUG)  # Set to DEBUG for maximum detail
+CUSTOM_LOGGER.setLevel(logging.DEBUG)
 
-# File handler for custom log file
 file_handler = RotatingFileHandler(
-    "/home/fyp213/wyoming_custom.log", # NOTE Change this to your specific path
-    maxBytes=10*1024*1024,  # 10 MB max size
-    backupCount=3  # Keep 3 backup files
+    "/home/fyp213/wyoming_custom.log",
+    maxBytes=10*1024*1024,
+    backupCount=3
 )
 file_handler.setLevel(logging.DEBUG)
 file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(file_formatter)
 CUSTOM_LOGGER.addHandler(file_handler)
 
-# Console handler (optional, for systemd journal)
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)  # Less verbose for journal
+console_handler.setLevel(logging.INFO)
 console_formatter = logging.Formatter('%(levelname)s: %(message)s')
 console_handler.setFormatter(console_formatter)
 CUSTOM_LOGGER.addHandler(console_handler)
 
-_LOGGER = logging.getLogger(__name__)
-_WAKE_INFO_TIMEOUT = 5.0
-
 class WakeStreamingSatellite(SatelliteBase):
-    """Satellite that waits for local wake word detection before streaming, with follow-up response handling."""
+    """Local satellite with wake word detection and offline STT."""
 
     def __init__(self, settings: SatelliteSettings) -> None:
-        if not settings.wake.enabled:
-            raise ValueError("Local wake word detection is not enabled")
-
         super().__init__(settings)
         self.is_streaming = False
-        self.awaiting_response = False  # Flag for follow-up interactions
-        self.is_speaking = False       # Flag to indicate if the assistant is speaking
-        self.last_synthesize_text = None  # Store the last synthesized text
         self.refractory_timestamp: Dict[Optional[str], float] = {}
-
-        if settings.vad.enabled:
-            _LOGGER.warning("VAD is enabled but will not be used")
-
         self._debug_recording_timestamp: Optional[int] = None
-        self._is_paused = False
-        self._wake_info: Optional[Info] = None
-        self._wake_info_ready = asyncio.Event()
 
-    async def event_from_server(self, event: Event) -> None:
-        # CUSTOM_LOGGER.debug("Received event from server: %s", event.type)  # Log all incoming events
-        """Handle events from the server, managing streaming and conversation state."""
-        # Capture synthesized text
-        if Synthesize.is_type(event.type):
-            synthesize = Synthesize.from_event(event)
-            self.last_synthesize_text = synthesize.text
-            _LOGGER.debug("Last synthesized text: %s", self.last_synthesize_text)
-            CUSTOM_LOGGER.debug("Synthesized text: %s", self.last_synthesize_text)
-
-        # Assistant starts speaking
-        if AudioStart.is_type(event.type):
-            self.is_speaking = True
-            self.microphone_muted = True  # Mute microphone when audio playback starts
-            _LOGGER.debug("Assistant started speaking")
-
-        # Assistant stops speaking
-        if AudioStop.is_type(event.type):
-            self.is_speaking = False
-            # Brief delay to ensure TTS audio has fully stopped
-            await asyncio.sleep(15)
-            self.microphone_muted = False  # Unmute microphone after delay
-            _LOGGER.debug("Assistant stopped speaking")
-            # Check if the last text was a question
-            if self.last_synthesize_text and "?" in self.last_synthesize_text.strip():
-                self.awaiting_response = True
-                _LOGGER.info("Awaiting user response after question")
-            else:
-                self.awaiting_response = False
-
-        if Transcript.is_type(event.type):
-            transcript = Transcript.from_event(event)
-            transcript_text = transcript.text.lower()
-            _LOGGER.debug("Received transcript: %s", transcript_text)
-            CUSTOM_LOGGER.debug("Transcript received: %s", transcript_text)
-            if "move forward" in transcript_text:
-                CUSTOM_LOGGER.info("Detected 'move forward' in transcript, running motor_run.py")
-                try:
-                    result = subprocess.run(
-                        ["python3", "/home/fyp213/motor_run.py"], # NOTE Change this to your specific path
-                        check=True,
-                        capture_output=True,
-                        text=True
-                    )
-                    CUSTOM_LOGGER.info("motor_run.py executed successfully: %s", result.stdout)
-                except subprocess.CalledProcessError as e:
-                    CUSTOM_LOGGER.error("Failed to run motor_run.py: %s, stderr: %s", e, e.stderr)
-
-
-
-        # Handle other event types
-        is_run_satellite = RunSatellite.is_type(event.type)
-        is_pause_satellite = PauseSatellite.is_type(event.type)
-        is_transcript = Transcript.is_type(event.type)
-        is_error = Error.is_type(event.type)
-
-        if is_transcript or is_pause_satellite:
-            self.is_streaming = False
-            if self.stt_audio_writer is not None:
-                self.stt_audio_writer.stop()
-
-        await super().event_from_server(event)
-
-        if is_run_satellite or is_transcript or is_error or is_pause_satellite:
-            self.is_streaming = False
-            if is_transcript or is_error:
-                self.awaiting_response = False
-            if is_pause_satellite:
-                self._is_paused = True
-                _LOGGER.debug("Satellite is paused")
-            elif not self._is_paused:
-                await self.trigger_streaming_stop()
-                await self._send_wake_detect()
-                _LOGGER.info("Waiting for wake word")
-                self._debug_recording_timestamp = time.monotonic_ns()
-                if self.wake_audio_writer is not None:
-                    self.wake_audio_writer.start(timestamp=self._debug_recording_timestamp)
-
-    async def trigger_tts_stop(self) -> None:
-        """Handle the end of TTS synthesis (optional override, but not primary control)."""
-        # This can remain for compatibility, but AudioStop now handles the logic
-        await super().trigger_tts_stop()
-
-    async def trigger_server_disconnected(self) -> None:
-        """Handle server disconnection."""
-        await super().trigger_server_disconnected()
-        self.is_streaming = False
-        if self.stt_audio_writer is not None:
-            self.stt_audio_writer.stop()
-        await self.trigger_streaming_stop()
+        # Initialize Vosk STT
+        self.model = Model("/home/fyp213/vosk-model/vosk-model-small-en-us-0.15")
+        self.recognizer = None
+        self.audio_buffer = bytearray()
 
     async def event_from_mic(self, event: Event, audio_bytes: Optional[bytes] = None) -> None:
-        """Handle microphone events, streaming based on conversation state."""
-        if self.is_speaking or self.microphone_muted or self._is_paused:
-            return  # Ignore input while speaking, muted, or paused
-
+        """Handle microphone events, process audio with STT when streaming."""
         if not AudioChunk.is_type(event.type):
             return
 
-        # Debug audio recording
-        if self.wake_audio_writer is not None or self.stt_audio_writer is not None:
-            if audio_bytes is None:
-                chunk = AudioChunk.from_event(event)
-                audio_bytes = chunk.audio
-            if self.wake_audio_writer is not None:
-                self.wake_audio_writer.write(audio_bytes)
-            if self.stt_audio_writer is not None:
-                self.stt_audio_writer.write(audio_bytes)
+        if audio_bytes is None:
+            chunk = AudioChunk.from_event(event)
+            audio_bytes = chunk.audio
+
+        if self.wake_audio_writer is not None:
+            self.wake_audio_writer.write(audio_bytes)
 
         if self.is_streaming:
-            await self.event_to_server(event)
-        elif self.awaiting_response:
-            self.is_streaming = True
-            _LOGGER.debug("Simulating wake word detection for follow-up")
-            fake_detection = Detection(name="hey_jarvis") # NOTE Change this to your specific wake word
-            await self.event_to_server(fake_detection.event())
-            await self._send_run_pipeline()
-            await self.trigger_streaming_start()
-            await self.event_to_server(event)
+            self.audio_buffer.extend(audio_bytes)
+            if self.recognizer and self.recognizer.AcceptWaveform(audio_bytes):
+                result = self.recognizer.Result()
+                transcript = self.extract_text(result)
+                if transcript:
+                    CUSTOM_LOGGER.debug("Transcript received: %s", transcript)
+                    self.save_transcript(transcript)
+                    self.is_streaming = False
+                    if self.stt_audio_writer is not None:
+                        self.stt_audio_writer.stop()
+                    await self._send_wake_detect()  # Reset to wake word detection
         else:
             await self.event_to_wake(event)
 
     async def event_from_wake(self, event: Event) -> None:
-        """Handle wake word events, initiating streaming."""
-        if Info.is_type(event.type):
-            self._wake_info = Info.from_event(event)
-            self._wake_info_ready.set()
-            return
-
-        if self.is_streaming or self.server_id is None:
-            return
-
+        """Handle wake word detection and start local STT."""
         if Detection.is_type(event.type):
             detection = Detection.from_event(event)
             refractory_timestamp = self.refractory_timestamp.get(detection.name)
             if refractory_timestamp and refractory_timestamp > time.monotonic():
-                _LOGGER.debug("Wake word detection occurred during refractory period")
+                CUSTOM_LOGGER.debug("Wake word in refractory period")
                 return
+
+            CUSTOM_LOGGER.debug("Wake word detected: %s", detection.name)
+            self.is_streaming = True
+            self.recognizer = KaldiRecognizer(self.model, 16000)
+            self.audio_buffer = bytearray()
+            CUSTOM_LOGGER.debug("Starting audio streaming for STT")
 
             if self.wake_audio_writer is not None:
                 self.wake_audio_writer.stop()
-
             if self.stt_audio_writer is not None:
                 self.stt_audio_writer.start(timestamp=self._debug_recording_timestamp)
-
-            _LOGGER.debug(detection)
-            self.is_streaming = True
-            _LOGGER.debug("Streaming audio")
 
             if self.settings.wake.refractory_seconds is not None:
                 self.refractory_timestamp[detection.name] = (
                     time.monotonic() + self.settings.wake.refractory_seconds
                 )
 
-            await self.event_to_server(event)
-            pipeline_name = None
-            if self.settings.wake.names:
-                detection_name = normalize_wake_word(detection.name)
-                for wake_name in self.settings.wake.names:
-                    if normalize_wake_word(wake_name.name) == detection_name:
-                        pipeline_name = wake_name.pipeline
-                        break
-
-            await self._send_run_pipeline(pipeline_name=pipeline_name)
-            await self.forward_event(event)
-            await self.trigger_detection(Detection.from_event(event))
-            await self.trigger_streaming_start()
-
-    async def update_info(self, info: Info) -> None:
-        """Update wake service info."""
-        self._wake_info = None
-        self._wake_info_ready.clear()
-        await self.event_to_wake(Describe().event())
+    def extract_text(self, result: str) -> str:
+        """Extract text from Vosk result JSON."""
         try:
-            await asyncio.wait_for(self._wake_info_ready.wait(), timeout=_WAKE_INFO_TIMEOUT)
-            if self._wake_info is not None:
-                info.wake = self._wake_info.wake
-        except asyncio.TimeoutError:
-            _LOGGER.warning("Failed to get info from wake service")
+            result_dict = json.loads(result)
+            return result_dict.get("text", "").strip()
+        except json.JSONDecodeError:
+            CUSTOM_LOGGER.error("Failed to parse STT result: %s", result)
+            return ""
 
+    def save_transcript(self, transcript: str) -> None:
+        """Save transcript to a file."""
+        transcript_file = "/home/fyp213/transcripts.txt"
+        with open(transcript_file, "a") as f:
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"{timestamp}: {transcript}\n")
+        CUSTOM_LOGGER.info("Saved transcript to %s: %s", transcript_file, transcript)
 
-
-
+    async def event_from_server(self, event: Event) -> None:
+        """Override to do nothing since there's no server."""
+        pass
