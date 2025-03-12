@@ -1221,94 +1221,6 @@ console_formatter = logging.Formatter('%(levelname)s: %(message)s')
 console_handler.setFormatter(console_formatter)
 CUSTOM_LOGGER.addHandler(console_handler)
 
-# class WakeStreamingSatellite(SatelliteBase):
-#     """Local satellite with wake word detection and offline STT."""
-
-#     def __init__(self, settings: SatelliteSettings) -> None:
-#         super().__init__(settings)
-#         self.is_streaming = False
-#         self.refractory_timestamp: Dict[Optional[str], float] = {}
-#         self._debug_recording_timestamp: Optional[int] = None
-
-#         # Initialize Vosk STT
-#         self.model = Model("/home/fyp213/vosk-model/vosk-model-small-en-us-0.15")
-#         self.recognizer = None
-#         self.audio_buffer = bytearray()
-
-#     async def event_from_mic(self, event: Event, audio_bytes: Optional[bytes] = None) -> None:
-#         """Handle microphone events, process audio with STT when streaming."""
-#         if not AudioChunk.is_type(event.type):
-#             return
-
-#         if audio_bytes is None:
-#             chunk = AudioChunk.from_event(event)
-#             audio_bytes = chunk.audio
-
-#         if self.wake_audio_writer is not None:
-#             self.wake_audio_writer.write(audio_bytes)
-
-#         if self.is_streaming:
-#             self.audio_buffer.extend(audio_bytes)
-#             if self.recognizer and self.recognizer.AcceptWaveform(audio_bytes):
-#                 result = self.recognizer.Result()
-#                 transcript = self.extract_text(result)
-#                 if transcript:
-#                     CUSTOM_LOGGER.debug("Transcript received: %s", transcript)
-#                     self.save_transcript(transcript)
-#                     self.is_streaming = False
-#                     if self.stt_audio_writer is not None:
-#                         self.stt_audio_writer.stop()
-#                     await self._send_wake_detect()  # Reset to wake word detection
-#         else:
-#             await self.event_to_wake(event)
-
-#     async def event_from_wake(self, event: Event) -> None:
-#         """Handle wake word detection and start local STT."""
-#         if Detection.is_type(event.type):
-#             detection = Detection.from_event(event)
-#             refractory_timestamp = self.refractory_timestamp.get(detection.name)
-#             if refractory_timestamp and refractory_timestamp > time.monotonic():
-#                 CUSTOM_LOGGER.debug("Wake word in refractory period")
-#                 return
-
-#             CUSTOM_LOGGER.debug("Wake word detected: %s", detection.name)
-#             self.is_streaming = True
-#             self.recognizer = KaldiRecognizer(self.model, 16000)
-#             self.audio_buffer = bytearray()
-#             CUSTOM_LOGGER.debug("Starting audio streaming for STT")
-
-#             if self.wake_audio_writer is not None:
-#                 self.wake_audio_writer.stop()
-#             if self.stt_audio_writer is not None:
-#                 self.stt_audio_writer.start(timestamp=self._debug_recording_timestamp)
-
-#             if self.settings.wake.refractory_seconds is not None:
-#                 self.refractory_timestamp[detection.name] = (
-#                     time.monotonic() + self.settings.wake.refractory_seconds
-#                 )
-
-#     def extract_text(self, result: str) -> str:
-#         """Extract text from Vosk result JSON."""
-#         try:
-#             result_dict = json.loads(result)
-#             return result_dict.get("text", "").strip()
-#         except json.JSONDecodeError:
-#             CUSTOM_LOGGER.error("Failed to parse STT result: %s", result)
-#             return ""
-
-#     def save_transcript(self, transcript: str) -> None:
-#         """Save transcript to a file."""
-#         transcript_file = "/home/fyp213/transcripts.txt"
-#         with open(transcript_file, "a") as f:
-#             timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-#             f.write(f"{timestamp}: {transcript}\n")
-#         CUSTOM_LOGGER.info("Saved transcript to %s: %s", transcript_file, transcript)
-
-#     async def event_from_server(self, event: Event) -> None:
-#         """Override to do nothing since there's no server."""
-#         pass
-
-
 class WakeStreamingSatellite(SatelliteBase):
     """Local satellite with wake word detection, offline STT, LEDs, and sounds."""
 
@@ -1425,3 +1337,143 @@ class WakeStreamingSatellite(SatelliteBase):
     async def event_from_server(self, event: Event) -> None:
         """Override to do nothing since there's no server."""
         pass
+
+
+# class WakeStreamingSatellite(SatelliteBase):
+#     """Local satellite with wake word detection, offline STT, LEDs, and sounds."""
+
+#     def __init__(self, settings: SatelliteSettings) -> None:
+#         super().__init__(settings)
+#         self.is_streaming = False
+#         self.is_speaking = False
+#         self.refractory_timestamp: Dict[Optional[str], float] = {}
+#         self._debug_recording_timestamp: Optional[int] = None
+
+#         # Initialize Vosk STT
+#         self.model = Model("/home/fyp213/vosk-model/vosk-model-small-en-us-0.15")
+#         self.recognizer = None
+#         self.audio_buffer = bytearray()
+
+#         # Store sound paths from settings
+#         self.awake_wav = settings.awake_wav if hasattr(settings, 'awake_wav') else "/home/fyp213/wyoming-satellite/sounds/awake.wav"
+#         self.done_wav = settings.done_wav if hasattr(settings, 'done_wav') else "/home/fyp213/wyoming-satellite/sounds/done.wav"
+#         # Check if snd_writer and event_writer are initialized
+#         if not hasattr(self, 'snd_writer') or self.snd_writer is None:
+#             CUSTOM_LOGGER.error("snd_writer not initialized in base class")
+#         else:
+#             CUSTOM_LOGGER.debug("snd_writer initialized: %s", self.snd_writer)
+
+#         if not hasattr(self, 'event_writer') or self.event_writer is None:
+#             CUSTOM_LOGGER.error("event_writer not initialized in base class")
+#         else:
+#             CUSTOM_LOGGER.debug("event_writer initialized: %s", self.event_writer)
+
+#     async def event_from_mic(self, event: Event, audio_bytes: Optional[bytes] = None) -> None:
+#         if self.is_speaking:
+#             return
+
+#         if not AudioChunk.is_type(event.type):
+#             return
+
+#         if audio_bytes is None:
+#             chunk = AudioChunk.from_event(event)
+#             audio_bytes = chunk.audio
+
+#         if self.wake_audio_writer is not None:
+#             self.wake_audio_writer.write(audio_bytes)
+
+#         if self.is_streaming:
+#             self.audio_buffer.extend(audio_bytes)
+#             if self.recognizer and self.recognizer.AcceptWaveform(audio_bytes):
+#                 result = self.recognizer.Result()
+#                 transcript = self.extract_text(result)
+#                 if transcript:
+#                     CUSTOM_LOGGER.debug("Transcript received: %s", transcript)
+#                     self.save_transcript(transcript)
+#                     self.is_streaming = False
+#                     if self.stt_audio_writer is not None:
+#                         self.stt_audio_writer.stop()
+#                     # Play done sound if snd_writer is available
+#                     if self.done_wav and hasattr(self, 'snd_writer') and self.snd_writer:
+#                         await self._play_sound(self.done_wav)
+#                     else:
+#                         CUSTOM_LOGGER.warning("Done sound not played: done_wav=%s, snd_writer=%s", 
+#                                             self.done_wav, getattr(self, 'snd_writer', None))
+#                     await self._send_wake_detect()
+#         else:
+#             await self.event_to_wake(event)
+
+#     async def event_from_wake(self, event: Event) -> None:
+#         if Detection.is_type(event.type):
+#             detection = Detection.from_event(event)
+#             refractory_timestamp = self.refractory_timestamp.get(detection.name)
+#             if refractory_timestamp and refractory_timestamp > time.monotonic():
+#                 CUSTOM_LOGGER.debug("Wake word in refractory period")
+#                 return
+
+#             CUSTOM_LOGGER.debug("Wake word detected: %s", detection.name)
+#             self.is_streaming = True
+#             self.recognizer = KaldiRecognizer(self.model, 16000)
+#             self.audio_buffer = bytearray()
+#             CUSTOM_LOGGER.debug("Starting audio streaming for STT")
+
+#             if self.wake_audio_writer is not None:
+#                 self.wake_audio_writer.stop()
+#             if self.stt_audio_writer is not None:
+#                 self.stt_audio_writer.start(timestamp=self._debug_recording_timestamp)
+
+#             if self.settings.wake.refractory_seconds is not None:
+#                 self.refractory_timestamp[detection.name] = (
+#                     time.monotonic() + self.settings.wake.refractory_seconds
+#                 )
+
+#             # Play awake sound if snd_writer is available
+#             if self.awake_wav and hasattr(self, 'snd_writer') and self.snd_writer:
+#                 await self._play_sound(self.awake_wav)
+#             else:
+#                 CUSTOM_LOGGER.warning("Awake sound not played: awake_wav=%s, snd_writer=%s", 
+#                                     self.awake_wav, getattr(self, 'snd_writer', None))
+
+#             # Trigger LED event if event_writer is available
+#             if hasattr(self, 'event_writer') and self.event_writer:
+#                 CUSTOM_LOGGER.debug("Triggering detection for LEDs")
+#                 await self.trigger_detection(detection)
+#             else:
+#                 CUSTOM_LOGGER.warning("Event writer not available for LEDs")
+
+#     async def _play_sound(self, wav_path: str) -> None:
+#         try:
+#             self.is_speaking = True
+#             with open(wav_path, "rb") as f:
+#                 wav_data = f.read()
+#                 if hasattr(self, 'snd_writer') and self.snd_writer:
+#                     self.snd_writer.write(wav_data)
+#                     # Wait for sound to finish (16kHz, 16-bit, mono)
+#                     await asyncio.sleep(len(wav_data) / (16000 * 2))
+#                 else:
+#                     CUSTOM_LOGGER.error("snd_writer not available to play sound: %s", wav_path)
+#         except Exception as e:
+#             CUSTOM_LOGGER.error("Failed to play sound %s: %s", wav_path, e)
+#         finally:
+#             self.is_speaking = False
+
+#     def extract_text(self, result: str) -> str:
+#         """Extract text from Vosk result JSON."""
+#         try:
+#             result_dict = json.loads(result)
+#             return result_dict.get("text", "").strip()
+#         except json.JSONDecodeError:
+#             CUSTOM_LOGGER.error("Failed to parse STT result: %s", result)
+#             return ""
+
+#     def save_transcript(self, transcript: str) -> None:
+#         """Save transcript to a file."""
+#         transcript_file = "/home/fyp213/transcripts.txt"
+#         with open(transcript_file, "a") as f:
+#             timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+#             f.write(f"{timestamp}: {transcript}\n")
+#         CUSTOM_LOGGER.info("Saved transcript to %s: %s", transcript_file, transcript)
+
+#     async def event_from_server(self, event: Event) -> None:
+#         """Override to do nothing since there's no server."""
+#         pass
