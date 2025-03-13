@@ -873,6 +873,10 @@ class SatelliteBase:
             mute_microphone=self.settings.mic.mute_during_awake_wav,
         )
 
+    async def trigger_end_of_detection(self) -> None:
+        """Called when speech has finished."""
+        await self._play_wav(self.settings.snd.done_wav)
+
     async def trigger_played(self) -> None:
         """Called when audio stopped playing"""
         await run_event_command(self.settings.event.played)
@@ -1289,9 +1293,9 @@ class WakeStreamingSatellite(SatelliteBase):
 
         if self.is_streaming and self.streaming_start_time:
             elapsed_time = time.monotonic() - self.streaming_start_time
-            if elapsed_time < 10:
+            if elapsed_time < 12:
                 self.audio_buffer.extend(audio_bytes)
-            elif elapsed_time >= 10 and self.is_streaming:
+            elif elapsed_time >= 12 and self.is_streaming:
                 self.is_streaming = False
                 temp_wav = "temp_recording.wav"
                 CUSTOM_LOGGER.debug("Saving audio buffer to WAV")
@@ -1337,8 +1341,10 @@ class WakeStreamingSatellite(SatelliteBase):
                         await self.play_tts_audio(tts_audio)
                     else:
                         CUSTOM_LOGGER.error("No TTS audio generated or sound service disabled")
+
                 if self.stt_audio_writer is not None:
                     self.stt_audio_writer.stop()
+
                 await self._send_wake_detect()
         else:
             await self.event_to_wake(event)
@@ -1367,19 +1373,16 @@ class WakeStreamingSatellite(SatelliteBase):
                     time.monotonic() + self.settings.wake.refractory_seconds
                 )
 
-            if self.awake_wav and self.settings.snd.enabled:
-                await self._play_wav(self.awake_wav, mute_microphone=True)
+
             await self.trigger_detection(detection)
+            asyncio.create_task(self._delayed_play_sound(delay=10))
+            
 
-            if self.done_wav and self.settings.snd.enabled:
-                asyncio.create_task(self._delayed_play_sound(self.done_wav, delay=12))
-
-    async def _delayed_play_sound(self, wav_path: str, delay: float) -> None:
+    async def _delayed_play_sound(self, delay: float) -> None:
         await asyncio.sleep(delay)
-        if self.settings.snd.enabled:
-            await self._play_wav(wav_path, mute_microphone=False)
-        else:
-            CUSTOM_LOGGER.error(f"Cannot play delayed sound {wav_path}: sound service disabled")
+        CUSTOM_LOGGER.debug("done sound")
+        await self.trigger_end_of_detection()
+
 
     async def play_tts_audio(self, wav_buffer: bytes) -> None:
         try:
