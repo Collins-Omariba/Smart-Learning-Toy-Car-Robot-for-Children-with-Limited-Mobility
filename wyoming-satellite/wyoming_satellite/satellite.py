@@ -1259,7 +1259,7 @@ class WakeStreamingSatellite(SatelliteBase):
         CUSTOM_LOGGER.debug("Initializing Gemini client")
         try:
             api_key = os.getenv("GEMINI_API_KEY")  # Load from .env
-            CUSTOM_LOGGER.debug(f"API KEY: {api_key}")
+            # CUSTOM_LOGGER.debug(f"API KEY: {api_key}")
             if not api_key:
                 raise ValueError("GEMINI_API_KEY is missing in .env file")
             
@@ -1308,18 +1308,27 @@ class WakeStreamingSatellite(SatelliteBase):
                 os.remove(temp_wav)
 
                 if transcript:
-                    CUSTOM_LOGGER.debug("Transcript: %s", transcript)
-                    self.save_transcript(transcript)
-
                     CUSTOM_LOGGER.debug("Sending transcript to Gemini API")
                     try:
-                        # Match your snippet's style as closely as possible
-                        response = self.gemini_client.generate_content(contents=transcript)
+                        # Define prompt instructions
+                        prompt_instructions = (
+                            "You are an AI assistant fr children"
+                            "Please respond in a very clear and concise manner."
+                            "Keep your responses **VERY** brief and relevant."
+                            "LIMIT YOUR WORDS"
+                        )
+
+                        # Send both the instructions and the actual text
+                        response = self.gemini_client.generate_content(
+                            contents=[prompt_instructions, transcript]  # List of input parts
+                        )
+
                         gemini_text = response.text
                         CUSTOM_LOGGER.debug("Gemini response: %s", gemini_text)
                     except Exception as e:
                         CUSTOM_LOGGER.error("Failed to get Gemini response: %s", e)
                         gemini_text = "Sorry, I couldn’t process that."
+
 
                     CUSTOM_LOGGER.debug("Generating TTS audio .. Wait")
                     tts_audio = await self.generate_tts_audio(gemini_text)
