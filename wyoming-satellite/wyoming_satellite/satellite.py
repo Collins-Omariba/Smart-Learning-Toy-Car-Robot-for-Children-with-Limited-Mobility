@@ -1240,6 +1240,7 @@ CUSTOM_LOGGER.addHandler(console_handler)
 load_dotenv()
 
 
+
 class WakeStreamingSatellite(SatelliteBase):
     def __init__(self, settings: SatelliteSettings) -> None:
         super().__init__(settings)
@@ -1249,8 +1250,22 @@ class WakeStreamingSatellite(SatelliteBase):
         self._debug_recording_timestamp: Optional[int] = None
         self.streaming_start_time = None
         self.audio_buffer = bytearray()
+        self.loading_task = None
+        self.loading_wav_path = "/home/fyp213/wyoming-satellite/sounds/loading.wav"
+        self.loading_audio_data = None
 
-        # Load Whisper model
+        CUSTOM_LOGGER.debug("Initializing WakeStreamingSatellite")
+        try:
+            with wave.open(self.loading_wav_path, "rb") as wf:
+                self.loading_rate = wf.getframerate()
+                self.loading_width = wf.getsampwidth()
+                self.loading_channels = wf.getnchannels()
+                self.loading_audio_data = wf.readframes(wf.getnframes())
+            CUSTOM_LOGGER.debug("Loaded loading.wav successfully")
+        except Exception as e:
+            CUSTOM_LOGGER.error(f"Failed to load loading.wav: {e}")
+            self.loading_audio_data = None
+
         CUSTOM_LOGGER.debug("Loading Whisper tiny.en model")
         try:
             self.whisper_model = whisper.load_model("tiny.en")
@@ -1259,36 +1274,59 @@ class WakeStreamingSatellite(SatelliteBase):
             CUSTOM_LOGGER.error(f"Failed to load Whisper model: {e}")
             raise
 
-        # Initialize Gemini API (adapted from your snippet)
         CUSTOM_LOGGER.debug("Initializing Gemini client")
         try:
-            api_key = os.getenv("GEMINI_API_KEY")  # Load from .env
-            # CUSTOM_LOGGER.debug(f"API KEY: {api_key}")
+            api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
-                raise ValueError("GEMINI_API_KEY is missing in .env file")
-            
+                raise ValueError("GEMINI_API_KEY missing")
             genai.configure(api_key=api_key)
-
-            # Simulate 'client' as a wrapper around GenerativeModel
             self.gemini_client = genai.GenerativeModel(model_name="gemini-1.5-flash")
             CUSTOM_LOGGER.debug("Gemini client initialized")
         except Exception as e:
             CUSTOM_LOGGER.error(f"Failed to initialize Gemini client: {e}")
             raise
 
-        # Sound paths from settings
         self.awake_wav = getattr(settings, 'awake_wav_path', None)
         self.done_wav = getattr(settings, 'done_wav_path', None)
 
+    async def play_loading_sound(self):
+        """Loop loading.wav asynchronously until cancelled."""
+        if self.loading_audio_data is None:
+            CUSTOM_LOGGER.error("No loading audio data available")
+            return
+
+        CUSTOM_LOGGER.debug("Starting loading sound loop")
+        chunk_size = self.settings.snd.samples_per_chunk * self.loading_width
+        try:
+            CUSTOM_LOGGER.debug("Sending AudioStart for loading sound")
+            await self.event_to_snd(AudioStart(rate=self.loading_rate, width=self.loading_width, channels=self.loading_channels).event())
+            for i in range(0, len(self.loading_audio_data), chunk_size):
+                chunk = self.loading_audio_data[i:i + chunk_size]
+                CUSTOM_LOGGER.debug("Sending loading sound chunk")
+                await self.event_to_snd(AudioChunk(rate=self.loading_rate, width=self.loading_width, channels=self.loading_channels, audio=chunk).event())
+            CUSTOM_LOGGER.debug("Sending AudioStop for loading sound")
+            await self.event_to_snd(AudioStop().event())
+            await asyncio.sleep(0.05)  # Reduced pause
+        except asyncio.CancelledError:
+            CUSTOM_LOGGER.debug("Loading sound loop cancelled")
+            await self.event_to_snd(AudioStop().event())
+            raise
+        except Exception as e:
+            CUSTOM_LOGGER.error(f"Error in loading sound loop: {e}")
+
     async def event_from_mic(self, event: Event, audio_bytes: Optional[bytes] = None) -> None:
+   
         if self.is_speaking:
+            CUSTOM_LOGGER.debug("Ignoring mic event: currently speaking")
             return
         if not AudioChunk.is_type(event.type):
+            CUSTOM_LOGGER.debug("Ignoring mic event: not an AudioChunk")
             return
         if audio_bytes is None:
             chunk = AudioChunk.from_event(event)
             audio_bytes = chunk.audio
         if self.wake_audio_writer is not None:
+            CUSTOM_LOGGER.debug("Writing audio to wake writer")
             self.wake_audio_writer.write(audio_bytes)
 
         if self.is_streaming and self.streaming_start_time:
@@ -1299,67 +1337,94 @@ class WakeStreamingSatellite(SatelliteBase):
                 self.is_streaming = False
                 temp_wav = "temp_recording.wav"
                 CUSTOM_LOGGER.debug("Saving audio buffer to WAV")
-                with wave.open(temp_wav, "wb") as wf:
-                    wf.setnchannels(1)
-                    wf.setsampwidth(2)
-                    wf.setframerate(16000)
-                    wf.writeframes(self.audio_buffer)
+                try:
+                    with wave.open(temp_wav, "wb") as wf:
+                        wf.setnchannels(1)
+                        wf.setsampwidth(2)
+                        wf.setframerate(16000)
+                        wf.writeframes(self.audio_buffer)
+                    CUSTOM_LOGGER.debug("Audio buffer saved")
+                except Exception as e:
+                    CUSTOM_LOGGER.error(f"Failed to save audio buffer: {e}")
+                    return
+
                 self.audio_buffer.clear()
+                CUSTOM_LOGGER.debug("Audio buffer cleared")
 
                 CUSTOM_LOGGER.debug("Transcribing audio with Whisper")
-                result = self.whisper_model.transcribe(temp_wav)
+                loop = asyncio.get_running_loop()
+                result = await loop.run_in_executor(None, self.whisper_model.transcribe, temp_wav)
                 transcript = result["text"].strip()
+                CUSTOM_LOGGER.debug(f"Transcription complete: {transcript}")
                 os.remove(temp_wav)
+                CUSTOM_LOGGER.debug("Temporary WAV removed")
 
-                # Convert transcript to lowercase for case-insensitive matching
+                # Start loading sound
+                CUSTOM_LOGGER.debug("Waiting 1 second before starting loading sound")
+                await asyncio.sleep(1)
+                if self.loading_task is None or self.loading_task.done():
+                    self.loading_task = asyncio.create_task(self.play_loading_sound())
+                    CUSTOM_LOGGER.debug("Loading sound task started")
+                else:
+                    CUSTOM_LOGGER.debug("Loading sound task already running")
+
                 transcript_lower = transcript.lower()
-
                 if transcript:
                     if "move forward" in transcript_lower:
-                        CUSTOM_LOGGER.info("Detected 'move forward' command")
+                        CUSTOM_LOGGER.info("Move forward detected")
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_forward.py"])
                     elif "move backwards" in transcript_lower:
-                        CUSTOM_LOGGER.info("Detected 'move backwards' command")
+                        CUSTOM_LOGGER.info("Move backwards detected")
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_backward.py"])
                     elif "move in a circle" in transcript_lower:
-                        CUSTOM_LOGGER.info("Detected 'move in a circle' command")
+                        CUSTOM_LOGGER.info("Move in circle detected")
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_circle.py"])
-                        
                     else:
-                        # Proceed with Gemini and TTS only if no motor command is detected
+                        CUSTOM_LOGGER.debug("Processing non-motor command")
+                        prompt_instructions = "You are an AI assistant for children. Respond clearly, concisely, and briefly."
                         CUSTOM_LOGGER.debug("Sending transcript to Gemini API")
-                        try:
-                            prompt_instructions = (
-                                "You are an AI assistant fr children"
-                                "Please respond in a very clear and concise manner."
-                                "Keep your responses **VERY** brief and relevant."
-                                "LIMIT YOUR WORDS"
-                            )
-                            response = self.gemini_client.generate_content(
-                                contents=[prompt_instructions, transcript]
-                            )
-                            gemini_text = response.text
-                            CUSTOM_LOGGER.debug("Gemini response: %s", gemini_text)
-                        except Exception as e:
-                            CUSTOM_LOGGER.error("Failed to get Gemini response: %s", e)
-                            gemini_text = "Sorry, I couldn’t process that."
+                        response = self.gemini_client.generate_content([prompt_instructions, transcript])
+                        gemini_text = response.text
+                        CUSTOM_LOGGER.debug(f"Gemini response: {gemini_text}")
 
-                        CUSTOM_LOGGER.debug("Generating TTS audio .. Wait")
+                        CUSTOM_LOGGER.debug("Generating TTS audio")
                         tts_audio = await self.generate_tts_audio(gemini_text)
-                        CUSTOM_LOGGER.debug(f"After generating TTS audio, tts_audio length: {len(tts_audio) if tts_audio else 'None'}")
+                        CUSTOM_LOGGER.debug(f"TTS audio generated, length: {len(tts_audio) if tts_audio else 'None'}")
                         if tts_audio and self.settings.snd.enabled:
+                            CUSTOM_LOGGER.debug("Preparing to play TTS")
+                            if self.loading_task and not self.loading_task.done():
+                                CUSTOM_LOGGER.debug("Cancelling loading sound before TTS")
+                                self.loading_task.cancel()
+                                try:
+                                    await self.loading_task
+                                    CUSTOM_LOGGER.debug("Loading sound stopped before TTS")
+                                except asyncio.CancelledError:
+                                    CUSTOM_LOGGER.debug("Loading sound cancellation confirmed")
                             await self.play_tts_audio(tts_audio)
+                            CUSTOM_LOGGER.debug("TTS audio played")
                         else:
-                            CUSTOM_LOGGER.error("No TTS audio generated or sound service disabled")
+                            CUSTOM_LOGGER.error("No TTS audio or sound disabled")
 
-                # Cleanup: stop STT audio writer and reset wake detection
+                # Ensure cleanup happens for all cases
+                CUSTOM_LOGGER.debug("Starting cleanup")
                 if self.stt_audio_writer is not None:
                     self.stt_audio_writer.stop()
+                    CUSTOM_LOGGER.debug("STT audio writer stopped")
+                if self.loading_task and not self.loading_task.done():
+                    CUSTOM_LOGGER.debug("Cancelling loading sound at cleanup")
+                    self.loading_task.cancel()
+                    try:
+                        await self.loading_task
+                        CUSTOM_LOGGER.debug("Loading sound stopped at cleanup")
+                    except asyncio.CancelledError:
+                        CUSTOM_LOGGER.debug("Loading sound cancellation confirmed at cleanup")
                 await self._send_wake_detect()
+                CUSTOM_LOGGER.debug("Wake detect sent")
         else:
             await self.event_to_wake(event)
 
     async def event_from_wake(self, event: Event) -> None:
+        CUSTOM_LOGGER.debug("Received wake event")
         if Detection.is_type(event.type):
             detection = Detection.from_event(event)
             refractory_timestamp = self.refractory_timestamp.get(detection.name)
@@ -1367,7 +1432,7 @@ class WakeStreamingSatellite(SatelliteBase):
                 CUSTOM_LOGGER.debug("Wake word in refractory period")
                 return
 
-            CUSTOM_LOGGER.debug("Wake word detected: %s", detection.name)
+            CUSTOM_LOGGER.debug(f"Wake word detected: {detection.name}")
             self.is_streaming = True
             self.streaming_start_time = time.monotonic()
             self.audio_buffer.clear()
@@ -1375,73 +1440,63 @@ class WakeStreamingSatellite(SatelliteBase):
 
             if self.wake_audio_writer is not None:
                 self.wake_audio_writer.stop()
+                CUSTOM_LOGGER.debug("Wake audio writer stopped")
             if self.stt_audio_writer is not None:
                 self.stt_audio_writer.start(timestamp=self._debug_recording_timestamp)
+                CUSTOM_LOGGER.debug("STT audio writer started")
 
             if self.settings.wake.refractory_seconds is not None:
-                self.refractory_timestamp[detection.name] = (
-                    time.monotonic() + self.settings.wake.refractory_seconds
-                )
-
+                self.refractory_timestamp[detection.name] = time.monotonic() + self.settings.wake.refractory_seconds
+                CUSTOM_LOGGER.debug(f"Set refractory period for {detection.name}")
 
             await self.trigger_detection(detection)
+            CUSTOM_LOGGER.debug("Trigger detection sent")
             asyncio.create_task(self._delayed_play_sound(delay=10))
-            
+            CUSTOM_LOGGER.debug("Scheduled delayed play sound")
 
     async def _delayed_play_sound(self, delay: float) -> None:
+        CUSTOM_LOGGER.debug(f"Delaying play sound by {delay} seconds")
         await asyncio.sleep(delay)
-        CUSTOM_LOGGER.debug("done sound")
+        CUSTOM_LOGGER.debug("Playing done sound")
         await self.trigger_end_of_detection()
 
-
     async def play_tts_audio(self, wav_buffer: bytes) -> None:
-        try:
-            CUSTOM_LOGGER.debug("Sending AudioStart event")
-            await self.event_to_snd(AudioStart(rate=16000, width=2, channels=1).event())
-            CUSTOM_LOGGER.debug(f"Sending {len(wav_buffer)} bytes of TTS audio")
-            chunk_size = self.settings.snd.samples_per_chunk * 2
-            for i in range(0, len(wav_buffer), chunk_size):
-                chunk = wav_buffer[i:i + chunk_size]
-                await self.event_to_snd(AudioChunk(rate=16000, width=2, channels=1, audio=chunk).event())
-            CUSTOM_LOGGER.debug("Sending AudioStop event")
-            await self.event_to_snd(AudioStop().event())
-            CUSTOM_LOGGER.debug("Finished playing TTS audio")
-        except Exception as e:
-            CUSTOM_LOGGER.error("Failed to play TTS audio: %s", e)
+        CUSTOM_LOGGER.debug("Playing TTS audio")
+        await self.event_to_snd(AudioStart(rate=16000, width=2, channels=1).event())
+        chunk_size = self.settings.snd.samples_per_chunk * 2
+        for i in range(0, len(wav_buffer), chunk_size):
+            CUSTOM_LOGGER.debug("Sending TTS audio chunk")
+            await self.event_to_snd(AudioChunk(rate=16000, width=2, channels=1, audio=wav_buffer[i:i + chunk_size]).event())
+        await self.event_to_snd(AudioStop().event())
+        CUSTOM_LOGGER.debug("Finished playing TTS audio")
 
-    def sync_generate_tts_audio(self, text: str) -> Optional[bytes]:
+    async def generate_tts_audio(self, text: str) -> Optional[bytes]:
+        CUSTOM_LOGGER.debug("Generating TTS audio")
         try:
-            CUSTOM_LOGGER.debug("Creating gTTS object")
             tts = gTTS(text=text, lang='en', slow=False)
-            CUSTOM_LOGGER.debug("Saving to temporary MP3")
             temp_mp3 = "temp.mp3"
+            temp_wav = "temp.wav"
+            CUSTOM_LOGGER.debug("Saving to temporary MP3")
             tts.save(temp_mp3)
             CUSTOM_LOGGER.debug("Converting MP3 to WAV")
-            temp_wav = "temp.wav"
-            subprocess.run([
-                "ffmpeg", "-i", temp_mp3, "-ar", "16000", "-ac", "1",
-                "-f", "wav", temp_wav
-            ], check=True)
+            subprocess.run(["ffmpeg", "-i", temp_mp3, "-ar", "16000", "-ac", "1", "-f", "wav", temp_wav], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             CUSTOM_LOGGER.debug("Reading WAV data")
             with open(temp_wav, "rb") as f:
                 wav_data = f.read()
-            CUSTOM_LOGGER.debug("Cleaning up temporary files")
             os.remove(temp_mp3)
             os.remove(temp_wav)
+            CUSTOM_LOGGER.debug("TTS audio generated successfully")
             return wav_data
         except Exception as e:
-            CUSTOM_LOGGER.error("Failed to generate TTS audio: %s", e)
+            CUSTOM_LOGGER.error(f"TTS generation failed: {e}")
             return None
 
-    async def generate_tts_audio(self, text: str) -> Optional[bytes]:
-        return await asyncio.to_thread(self.sync_generate_tts_audio, text)
-
     def save_transcript(self, transcript: str) -> None:
-        transcript_file = "/home/fyp213/transcripts.txt"
-        with open(transcript_file, "a") as f:
-            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-            f.write(f"{timestamp}: {transcript}\n")
-        CUSTOM_LOGGER.info("Saved transcript to %s: %s", transcript_file, transcript)
+        CUSTOM_LOGGER.debug("Saving transcript")
+        with open("/home/fyp213/transcripts.txt", "a") as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}: {transcript}\n")
+        CUSTOM_LOGGER.debug("Transcript saved")
 
     async def event_from_server(self, event: Event) -> None:
+        CUSTOM_LOGGER.debug("Received server event")
         pass
