@@ -1311,40 +1311,50 @@ class WakeStreamingSatellite(SatelliteBase):
                 transcript = result["text"].strip()
                 os.remove(temp_wav)
 
+                # Convert transcript to lowercase for case-insensitive matching
+                transcript_lower = transcript.lower()
+
                 if transcript:
-                    CUSTOM_LOGGER.debug("Sending transcript to Gemini API")
-                    try:
-                        # Define prompt instructions
-                        prompt_instructions = (
-                            "You are an AI assistant fr children"
-                            "Please respond in a very clear and concise manner."
-                            "Keep your responses **VERY** brief and relevant."
-                            "LIMIT YOUR WORDS"
-                        )
-
-                        # Send both the instructions and the actual text
-                        response = self.gemini_client.generate_content(
-                            contents=[prompt_instructions, transcript]  # List of input parts
-                        )
-
-                        gemini_text = response.text
-                        CUSTOM_LOGGER.debug("Gemini response: %s", gemini_text)
-                    except Exception as e:
-                        CUSTOM_LOGGER.error("Failed to get Gemini response: %s", e)
-                        gemini_text = "Sorry, I couldn’t process that."
-
-
-                    CUSTOM_LOGGER.debug("Generating TTS audio .. Wait")
-                    tts_audio = await self.generate_tts_audio(gemini_text)
-                    CUSTOM_LOGGER.debug(f"After generating TTS audio, tts_audio length: {len(tts_audio) if tts_audio else 'None'}")
-                    if tts_audio and self.settings.snd.enabled:
-                        await self.play_tts_audio(tts_audio)
+                    if "move forward" in transcript_lower:
+                        CUSTOM_LOGGER.info("Detected 'move forward' command")
+                        await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_forward.py"])
+                    elif "move backwards" in transcript_lower:
+                        CUSTOM_LOGGER.info("Detected 'move backwards' command")
+                        await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_backward.py"])
+                    elif "move in a circle" in transcript_lower:
+                        CUSTOM_LOGGER.info("Detected 'move in a circle' command")
+                        await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_circle.py"])
+                        
                     else:
-                        CUSTOM_LOGGER.error("No TTS audio generated or sound service disabled")
+                        # Proceed with Gemini and TTS only if no motor command is detected
+                        CUSTOM_LOGGER.debug("Sending transcript to Gemini API")
+                        try:
+                            prompt_instructions = (
+                                "You are an AI assistant fr children"
+                                "Please respond in a very clear and concise manner."
+                                "Keep your responses **VERY** brief and relevant."
+                                "LIMIT YOUR WORDS"
+                            )
+                            response = self.gemini_client.generate_content(
+                                contents=[prompt_instructions, transcript]
+                            )
+                            gemini_text = response.text
+                            CUSTOM_LOGGER.debug("Gemini response: %s", gemini_text)
+                        except Exception as e:
+                            CUSTOM_LOGGER.error("Failed to get Gemini response: %s", e)
+                            gemini_text = "Sorry, I couldn’t process that."
 
+                        CUSTOM_LOGGER.debug("Generating TTS audio .. Wait")
+                        tts_audio = await self.generate_tts_audio(gemini_text)
+                        CUSTOM_LOGGER.debug(f"After generating TTS audio, tts_audio length: {len(tts_audio) if tts_audio else 'None'}")
+                        if tts_audio and self.settings.snd.enabled:
+                            await self.play_tts_audio(tts_audio)
+                        else:
+                            CUSTOM_LOGGER.error("No TTS audio generated or sound service disabled")
+
+                # Cleanup: stop STT audio writer and reset wake detection
                 if self.stt_audio_writer is not None:
                     self.stt_audio_writer.stop()
-
                 await self._send_wake_detect()
         else:
             await self.event_to_wake(event)
