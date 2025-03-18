@@ -1302,7 +1302,6 @@ class WakeStreamingSatellite(SatelliteBase):
             await self.event_to_snd(AudioStart(rate=self.loading_rate, width=self.loading_width, channels=self.loading_channels).event())
             for i in range(0, len(self.loading_audio_data), chunk_size):
                 chunk = self.loading_audio_data[i:i + chunk_size]
-                CUSTOM_LOGGER.debug("Sending loading sound chunk")
                 await self.event_to_snd(AudioChunk(rate=self.loading_rate, width=self.loading_width, channels=self.loading_channels, audio=chunk).event())
             CUSTOM_LOGGER.debug("Sending AudioStop for loading sound")
             await self.event_to_snd(AudioStop().event())
@@ -1455,7 +1454,6 @@ class WakeStreamingSatellite(SatelliteBase):
             CUSTOM_LOGGER.debug("Scheduled delayed play sound")
 
     async def _delayed_play_sound(self, delay: float) -> None:
-        CUSTOM_LOGGER.debug(f"Delaying play sound by {delay} seconds")
         await asyncio.sleep(delay)
         CUSTOM_LOGGER.debug("Playing done sound")
         await self.trigger_end_of_detection()
@@ -1465,7 +1463,6 @@ class WakeStreamingSatellite(SatelliteBase):
         await self.event_to_snd(AudioStart(rate=16000, width=2, channels=1).event())
         chunk_size = self.settings.snd.samples_per_chunk * 2
         for i in range(0, len(wav_buffer), chunk_size):
-            CUSTOM_LOGGER.debug("Sending TTS audio chunk")
             await self.event_to_snd(AudioChunk(rate=16000, width=2, channels=1, audio=wav_buffer[i:i + chunk_size]).event())
         await self.event_to_snd(AudioStop().event())
         CUSTOM_LOGGER.debug("Finished playing TTS audio")
