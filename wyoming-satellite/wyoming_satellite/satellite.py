@@ -15,6 +15,7 @@ from gtts import gTTS
 import os
 import json
 import subprocess
+import spidev
 
 
 from dataclasses import dataclass
@@ -1214,7 +1215,6 @@ class VadStreamingSatellite(SatelliteBase):
 
 
 
-
 # Configure custom logger
 CUSTOM_LOGGER = logging.getLogger("wyoming_custom")
 CUSTOM_LOGGER.setLevel(logging.DEBUG)
@@ -1235,11 +1235,66 @@ console_formatter = logging.Formatter('%(levelname)s: %(message)s')
 console_handler.setFormatter(console_formatter)
 CUSTOM_LOGGER.addHandler(console_handler)
 
-
 # Load environment variables from .env file
 load_dotenv()
 
+# LED Colors
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+BLUE = (0, 0, 255)
 
+# APA102 Class (from your LED script)
+class APA102:
+    MAX_BRIGHTNESS = 0b11111
+    LED_START = 0b11100000
+    RGB_MAP = {
+        "rgb": [3, 2, 1],
+        "rbg": [3, 1, 2],
+        "grb": [2, 3, 1],
+        "gbr": [2, 1, 3],
+        "brg": [1, 3, 2],
+        "bgr": [1, 2, 3],
+    }
+
+    def __init__(self, num_led, global_brightness, order="rgb", bus=0, device=1, max_speed_hz=8000000):
+        self.num_led = num_led
+        order = order.lower()
+        self.rgb = self.RGB_MAP.get(order, self.RGB_MAP["rgb"])
+        self.global_brightness = min(global_brightness, self.MAX_BRIGHTNESS)
+        self.leds = [self.LED_START, 0, 0, 0] * self.num_led
+        self.spi = spidev.SpiDev()
+        self.spi.open(bus, device)
+        if max_speed_hz:
+            self.spi.max_speed_hz = max_speed_hz
+
+    def clock_start_frame(self):
+        self.spi.xfer2([0] * 4)
+
+    def clock_end_frame(self):
+        self.spi.xfer2([0xFF] * 4)
+
+    def set_pixel(self, led_num, red, green, blue, bright_percent=100):
+        if led_num < 0 or led_num >= self.num_led:
+            return
+        brightness = int((bright_percent * self.global_brightness) / 100.0 + 0.5)
+        ledstart = (brightness & 0b00011111) | self.LED_START
+        start_index = 4 * led_num
+        self.leds[start_index] = ledstart
+        self.leds[start_index + self.rgb[0]] = red
+        self.leds[start_index + self.rgb[1]] = green
+        self.leds[start_index + self.rgb[2]] = blue
+
+    def show(self):
+        self.clock_start_frame()
+        data = list(self.leds)
+        while data:
+            self.spi.xfer2(data[:32])
+            data = data[32:]
+        self.clock_end_frame()
+
+    def cleanup(self):
+        self.spi.close()
 
 class WakeStreamingSatellite(SatelliteBase):
     def __init__(self, settings: SatelliteSettings) -> None:
@@ -1253,6 +1308,11 @@ class WakeStreamingSatellite(SatelliteBase):
         self.loading_task = None
         self.loading_wav_path = "/home/fyp213/wyoming-satellite/sounds/loading.wav"
         self.loading_audio_data = None
+
+        # Initialize LED controller
+        self.leds = APA102(num_led=3, global_brightness=31)
+        self.leds.clock_start_frame()
+        self.set_led_color(BLACK)  # Start with LEDs off
 
         CUSTOM_LOGGER.debug("Initializing WakeStreamingSatellite")
         try:
@@ -1289,8 +1349,13 @@ class WakeStreamingSatellite(SatelliteBase):
         self.awake_wav = getattr(settings, 'awake_wav_path', None)
         self.done_wav = getattr(settings, 'done_wav_path', None)
 
+    def set_led_color(self, color: tuple[int, int, int]) -> None:
+        """Set all LEDs to the specified color."""
+        for i in range(3):
+            self.leds.set_pixel(i, color[0], color[1], color[2])
+        self.leds.show()
+
     async def play_loading_sound(self):
-        """Loop loading.wav asynchronously until cancelled."""
         if self.loading_audio_data is None:
             CUSTOM_LOGGER.error("No loading audio data available")
             return
@@ -1298,14 +1363,12 @@ class WakeStreamingSatellite(SatelliteBase):
         CUSTOM_LOGGER.debug("Starting loading sound loop")
         chunk_size = self.settings.snd.samples_per_chunk * self.loading_width
         try:
-            CUSTOM_LOGGER.debug("Sending AudioStart for loading sound")
             await self.event_to_snd(AudioStart(rate=self.loading_rate, width=self.loading_width, channels=self.loading_channels).event())
             for i in range(0, len(self.loading_audio_data), chunk_size):
                 chunk = self.loading_audio_data[i:i + chunk_size]
                 await self.event_to_snd(AudioChunk(rate=self.loading_rate, width=self.loading_width, channels=self.loading_channels, audio=chunk).event())
-            CUSTOM_LOGGER.debug("Sending AudioStop for loading sound")
             await self.event_to_snd(AudioStop().event())
-            await asyncio.sleep(0.05)  # Reduced pause
+            await asyncio.sleep(0.05)
         except asyncio.CancelledError:
             CUSTOM_LOGGER.debug("Loading sound loop cancelled")
             await self.event_to_snd(AudioStop().event())
@@ -1314,7 +1377,6 @@ class WakeStreamingSatellite(SatelliteBase):
             CUSTOM_LOGGER.error(f"Error in loading sound loop: {e}")
 
     async def event_from_mic(self, event: Event, audio_bytes: Optional[bytes] = None) -> None:
-   
         if self.is_speaking:
             CUSTOM_LOGGER.debug("Ignoring mic event: currently speaking")
             return
@@ -1332,8 +1394,10 @@ class WakeStreamingSatellite(SatelliteBase):
             elapsed_time = time.monotonic() - self.streaming_start_time
             if elapsed_time < 12:
                 self.audio_buffer.extend(audio_bytes)
+                self.set_led_color(GREEN)  # User is speaking
             elif elapsed_time >= 12 and self.is_streaming:
                 self.is_streaming = False
+                self.set_led_color(RED)  # Processing starts
                 temp_wav = "temp_recording.wav"
                 CUSTOM_LOGGER.debug("Saving audio buffer to WAV")
                 try:
@@ -1345,6 +1409,7 @@ class WakeStreamingSatellite(SatelliteBase):
                     CUSTOM_LOGGER.debug("Audio buffer saved")
                 except Exception as e:
                     CUSTOM_LOGGER.error(f"Failed to save audio buffer: {e}")
+                    self.set_led_color(BLACK)
                     return
 
                 self.audio_buffer.clear()
@@ -1358,7 +1423,6 @@ class WakeStreamingSatellite(SatelliteBase):
                 os.remove(temp_wav)
                 CUSTOM_LOGGER.debug("Temporary WAV removed")
 
-                # Start loading sound
                 CUSTOM_LOGGER.debug("Waiting 1 second before starting loading sound")
                 await asyncio.sleep(1)
                 if self.loading_task is None or self.loading_task.done():
@@ -1399,12 +1463,12 @@ class WakeStreamingSatellite(SatelliteBase):
                                     CUSTOM_LOGGER.debug("Loading sound stopped before TTS")
                                 except asyncio.CancelledError:
                                     CUSTOM_LOGGER.debug("Loading sound cancellation confirmed")
+                            self.set_led_color(BLUE)  # Playing response
                             await self.play_tts_audio(tts_audio)
                             CUSTOM_LOGGER.debug("TTS audio played")
                         else:
                             CUSTOM_LOGGER.error("No TTS audio or sound disabled")
 
-                # Ensure cleanup happens for all cases
                 CUSTOM_LOGGER.debug("Starting cleanup")
                 if self.stt_audio_writer is not None:
                     self.stt_audio_writer.stop()
@@ -1419,6 +1483,7 @@ class WakeStreamingSatellite(SatelliteBase):
                         CUSTOM_LOGGER.debug("Loading sound cancellation confirmed at cleanup")
                 await self._send_wake_detect()
                 CUSTOM_LOGGER.debug("Wake detect sent")
+                self.set_led_color(BLACK)  # Turn off LEDs after processing
         else:
             await self.event_to_wake(event)
 
@@ -1436,6 +1501,7 @@ class WakeStreamingSatellite(SatelliteBase):
             self.streaming_start_time = time.monotonic()
             self.audio_buffer.clear()
             CUSTOM_LOGGER.debug("Starting audio streaming for STT")
+            self.set_led_color(GREEN)  # User is speaking
 
             if self.wake_audio_writer is not None:
                 self.wake_audio_writer.stop()
