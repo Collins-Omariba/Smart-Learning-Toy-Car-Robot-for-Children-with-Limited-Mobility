@@ -1463,9 +1463,18 @@ class WakeStreamingSatellite(SatelliteBase):
                                     CUSTOM_LOGGER.debug("Loading sound stopped before TTS")
                                 except asyncio.CancelledError:
                                     CUSTOM_LOGGER.debug("Loading sound cancellation confirmed")
-                            self.set_led_color(BLUE)  # Playing response
-                            await self.play_tts_audio(tts_audio)
+                            await self.play_tts_audio(tts_audio)  # Play the audio (LED managed inside method)
                             CUSTOM_LOGGER.debug("TTS audio played")
+
+                            # Check if the response is a question
+                            if gemini_text.strip().endswith('?'):
+                                await asyncio.sleep(10)
+                                CUSTOM_LOGGER.debug("Response is a question, mimicking wake word detection")
+                                # Mimic wake word detection after playback
+                                detection_event = Detection(name="hey_jarvis", timestamp=time.monotonic()).event()
+                                await self.event_from_wake(detection_event)  # Triggers existing wake word logic
+                            else:
+                                self.set_led_color(BLACK)  # Turn off LEDs if not a question
                         else:
                             CUSTOM_LOGGER.error("No TTS audio or sound disabled")
 
@@ -1526,11 +1535,13 @@ class WakeStreamingSatellite(SatelliteBase):
 
     async def play_tts_audio(self, wav_buffer: bytes) -> None:
         CUSTOM_LOGGER.debug("Playing TTS audio")
+        self.set_led_color(BLUE)  # Set LED to blue before starting playback
         await self.event_to_snd(AudioStart(rate=16000, width=2, channels=1).event())
         chunk_size = self.settings.snd.samples_per_chunk * 2
         for i in range(0, len(wav_buffer), chunk_size):
             await self.event_to_snd(AudioChunk(rate=16000, width=2, channels=1, audio=wav_buffer[i:i + chunk_size]).event())
         await self.event_to_snd(AudioStop().event())
+        self.set_led_color(BLACK)  # Turn off LED after playback is queued
         CUSTOM_LOGGER.debug("Finished playing TTS audio")
 
     async def generate_tts_audio(self, text: str) -> Optional[bytes]:
