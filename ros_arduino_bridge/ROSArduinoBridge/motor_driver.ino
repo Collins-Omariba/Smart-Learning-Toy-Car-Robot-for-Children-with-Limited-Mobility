@@ -73,6 +73,7 @@
     servo1.attach(SERVO1_PIN);
     servo2.attach(SERVO2_PIN);
     //
+
   }
   
   void setMotorSpeed(int i, int spd) {
@@ -102,11 +103,11 @@
 
     // Manual servo movement code (Remove for normal functioning of ROS Arduino bridge)
     if (leftSpeed != 0 || rightSpeed != 0) {
-        servo1.write(90);
-        servo2.write(90);
-    } else {
         servo1.write(0);
         servo2.write(0);
+    } else {
+        servo1.write(120);
+        servo2.write(120);
     }
     //
 
