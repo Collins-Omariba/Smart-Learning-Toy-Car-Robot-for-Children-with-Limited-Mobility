@@ -1243,6 +1243,7 @@ BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
+YELLOW = (255, 255, 0)
 
 # APA102 Class (from your LED script)
 class APA102:
@@ -1312,7 +1313,7 @@ class WakeStreamingSatellite(SatelliteBase):
         # Initialize LED controller
         self.leds = APA102(num_led=3, global_brightness=31)
         self.leds.clock_start_frame()
-        self.set_led_color(BLACK)  # Start with LEDs off
+        self.set_led_color(YELLOW)  # Set LEDS to yellow to signal ON status
 
         CUSTOM_LOGGER.debug("Initializing WakeStreamingSatellite")
         try:
@@ -1409,7 +1410,7 @@ class WakeStreamingSatellite(SatelliteBase):
                     CUSTOM_LOGGER.debug("Audio buffer saved")
                 except Exception as e:
                     CUSTOM_LOGGER.error(f"Failed to save audio buffer: {e}")
-                    self.set_led_color(BLACK)
+                    self.set_led_color(YELLOW)
                     return
 
                 self.audio_buffer.clear()
@@ -1542,7 +1543,7 @@ class WakeStreamingSatellite(SatelliteBase):
             await self.event_to_snd(AudioChunk(rate=16000, width=2, channels=1, audio=wav_buffer[i:i + chunk_size]).event())
         await self.event_to_snd(AudioStop().event())
         await asyncio.sleep(6)
-        self.set_led_color(BLACK)  # Turn off LED after playback is queued
+        self.set_led_color(YELLOW)  # Turn off LED after playback is queued
         CUSTOM_LOGGER.debug("Finished playing TTS audio")
 
     async def generate_tts_audio(self, text: str) -> Optional[bytes]:
