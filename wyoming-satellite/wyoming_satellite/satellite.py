@@ -1474,7 +1474,7 @@ class WakeStreamingSatellite(SatelliteBase):
                                 detection_event = Detection(name="hey_jarvis", timestamp=time.monotonic()).event()
                                 await self.event_from_wake(detection_event)  # Triggers existing wake word logic
                             else:
-                                self.set_led_color(BLACK)  # Turn off LEDs if not a question
+                                self.set_led_color(BLUE)
                         else:
                             CUSTOM_LOGGER.error("No TTS audio or sound disabled")
 
@@ -1492,7 +1492,7 @@ class WakeStreamingSatellite(SatelliteBase):
                         CUSTOM_LOGGER.debug("Loading sound cancellation confirmed at cleanup")
                 await self._send_wake_detect()
                 CUSTOM_LOGGER.debug("Wake detect sent")
-                self.set_led_color(BLACK)  # Turn off LEDs after processing
+                self.set_led_color(BLUE) 
         else:
             await self.event_to_wake(event)
 
@@ -1541,6 +1541,7 @@ class WakeStreamingSatellite(SatelliteBase):
         for i in range(0, len(wav_buffer), chunk_size):
             await self.event_to_snd(AudioChunk(rate=16000, width=2, channels=1, audio=wav_buffer[i:i + chunk_size]).event())
         await self.event_to_snd(AudioStop().event())
+        await asyncio.sleep(6)
         self.set_led_color(BLACK)  # Turn off LED after playback is queued
         CUSTOM_LOGGER.debug("Finished playing TTS audio")
 
