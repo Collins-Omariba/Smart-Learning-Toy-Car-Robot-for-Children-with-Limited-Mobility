@@ -97,19 +97,45 @@
     }
   }
   
+  // Manual servo movement code (Remove for normal functioning of ROS Arduino bridge)
+  void moveServosSmoothly(int startAngle, int endAngle, int stepDelay) {
+    if (startAngle < endAngle) {
+        for (int pos = startAngle; pos <= endAngle; pos++) {
+            servo1.write(pos);
+            servo2.write(180 - pos);  // Moves opposite
+            delay(stepDelay);
+        }
+    } else {
+        for (int pos = startAngle; pos >= endAngle; pos--) {
+            servo1.write(pos);
+            servo2.write(180 - pos);  // Moves opposite
+            delay(stepDelay);
+        }
+    }
+}
+
   void setMotorSpeeds(int leftSpeed, int rightSpeed) {
     setMotorSpeed(LEFT, leftSpeed);
     setMotorSpeed(RIGHT, rightSpeed);
 
     // Manual servo movement code (Remove for normal functioning of ROS Arduino bridge)
-    if (leftSpeed != 0 || rightSpeed != 0) {
-        servo1.write(0);
-        servo2.write(0);
+    // Manual servo movement
+    static int currentAngle = 90; // Neutral starting position
+
+    if (leftSpeed > 0 && rightSpeed > 0) {
+        // Move in one direction when both speeds are positive
+        moveServosSmoothly(currentAngle, 180, 10);
+        currentAngle = 180;
+    } else if (leftSpeed < 0 && rightSpeed < 0) {
+        // Move in the opposite direction when both speeds are negative
+        moveServosSmoothly(currentAngle, 0, 10);
+        currentAngle = 0;
     } else {
-        servo1.write(120);
-        servo2.write(120);
+        // Reset to neutral when motors stop or have mixed directions
+        moveServosSmoothly(currentAngle, 90, 10);
+        currentAngle = 90;
     }
-    //
+
 
   }
 #else
