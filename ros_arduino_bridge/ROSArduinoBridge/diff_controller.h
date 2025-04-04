@@ -45,6 +45,7 @@ int Ko = 50;
 
 
 unsigned char moving = 0; // is the base in motion?
+unsigned char raw_moving = 0; // flag indicating if the base is in motion with raw pwm
 
 /*
 * Initialize PID variables to zero to prevent startup spikes
