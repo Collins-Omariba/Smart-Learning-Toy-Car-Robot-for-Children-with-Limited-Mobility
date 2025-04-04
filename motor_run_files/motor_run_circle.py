@@ -18,7 +18,7 @@ def main():
     ser.reset_input_buffer()
 
     # Command for counterclockwise circle: left motor faster than right
-    command = "m 44 11\r\n"  # Left: 100, Right: 50
+    command = "m 44 22\r\n"  # Left: 100, Right: 50
     logging.info("Sending circle command: %s", command.strip())
     ser.write(command.encode('utf-8'))
     ser.flush()

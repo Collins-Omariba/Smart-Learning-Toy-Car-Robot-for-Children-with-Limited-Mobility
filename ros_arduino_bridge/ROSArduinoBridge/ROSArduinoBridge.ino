@@ -290,49 +290,89 @@ void setup() {
 }
 
 
-#define BASE_SPEED 44
+unsigned long lastBluetoothCommandTime = 0;
+bool bluetoothOverrideActive = false;
+const unsigned long bluetoothOverrideDuration = 2000; // 2 seconds
+
+#define DEFAULT_SPEED 44 
+
+void injectCommand(const char* commandStr) {
+  // Clear any previous command info.
+  resetCommand();
+
+  // The command string is expected to be in the form: "m 100 100"
+  // Set the command character.
+  cmd = commandStr[0]; // e.g. 'm'
+
+  // Move past the command and a space.
+  const char* p = commandStr + 2;
+
+  // Copy first argument into argv1.
+  int i = 0;
+  while (p[i] != ' ' && p[i] != '\0') {
+    argv1[i] = p[i];
+    i++;
+  }
+  argv1[i] = '\0';
+
+  // If there is a space, copy second argument.
+  if (p[i] == ' ') {
+    i++;  // Skip the space.
+    int j = 0;
+    while (p[i] != '\0') {
+      argv2[j] = p[i];
+      i++; j++;
+    }
+    argv2[j] = '\0';
+  }
+  
+  // Execute the command.
+  runCommand();
+  resetCommand();
+}
+
 
 void processBluetoothCommands() {
   if (Serial1.available()) {
     char btCmd = Serial1.read();
-        Serial.print("Received via Bluetooth: ");
-        Serial.println(btCmd);
+    
     switch (btCmd) {
-      case '1': // forward
-        setMotorSpeeds(BASE_SPEED, BASE_SPEED);
-        moving = 1;
-        lastMotorCommand = millis();
+      case '1': // forward: send "m 100 100"
+        injectCommand("m 44 44");
+        bluetoothOverrideActive = true;
+        lastBluetoothCommandTime = millis();
         break;
-
-      case '2': // backward
-        setMotorSpeeds(-BASE_SPEED, -BASE_SPEED);
-        moving = 1;
-        lastMotorCommand = millis();
+        
+      case '2': // backward: send "m -100 -100"
+        injectCommand("m -44 -44");
+        bluetoothOverrideActive = true;
+        lastBluetoothCommandTime = millis();
         break;
-
-      case '3': // right
-        setMotorSpeeds(100, -100);
-        moving = 1;
-        lastMotorCommand = millis();
+        
+      case '3': // left: send "m -100 100"
+        injectCommand("m -44 44");
+        bluetoothOverrideActive = true;
+        lastBluetoothCommandTime = millis();
         break;
-
-      case '4': // right
-        setMotorSpeeds(-100, 100);
-        moving = 1;
-        lastMotorCommand = millis();
+        
+      case '4': // right: send "m 100 -100"
+        injectCommand("m 44 -44");
+        bluetoothOverrideActive = true;
+        lastBluetoothCommandTime = millis();
         break;
-
-      case '0': // stop (optional)
-        setMotorSpeeds(0, 0);
-        moving = 0;
+        
+      // Optionally, you can add a case for stopping the robot:
+      case '0': // stop
+        injectCommand("m 0 0");
+        bluetoothOverrideActive = false;
         break;
-
+        
       default:
-        // ignore any other input
         break;
     }
   }
 }
+
 
 
 
@@ -342,6 +382,19 @@ void processBluetoothCommands() {
    interval and check for auto-stop conditions.
 */
 void loop() {
+  // Process Bluetooth commands regardless.
+  processBluetoothCommands();
+
+  // If Bluetooth override is active, check if its duration has expired.
+  if (bluetoothOverrideActive) {
+    if (millis() - lastBluetoothCommandTime >= bluetoothOverrideDuration) {
+      // Override period is over; allow ROS commands again.
+      bluetoothOverrideActive = false;
+    }
+  }
+
+  // Only process ROS (Serial) commands if Bluetooth override is NOT active.
+  if (!bluetoothOverrideActive) {
   while (Serial.available() > 0) {
     
     // Read the next character
@@ -381,9 +434,8 @@ void loop() {
       }
     }
   }
+  }
   
-// Bluetooth control (non-ROS)
-processBluetoothCommands();
 
 // If we are using base control, run a PID calculation at the appropriate intervals
 #ifdef USE_BASE
