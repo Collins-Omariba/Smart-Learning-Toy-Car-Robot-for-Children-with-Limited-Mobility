@@ -71,9 +71,10 @@
 
 /* Serial port baud rate */
 #define BAUDRATE     57600
+// #define BAUDRATE     9600 //for debugging
 
 /* Maximum PWM signal */
-#define MAX_PWM        255
+#define MAX_PWM   255
 
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
@@ -138,6 +139,42 @@ char argv2[16];
 long arg1;
 long arg2;
 
+
+
+// bluetooth related
+#define DEFAULT_SPEED 44 
+unsigned long lastBluetoothCommandTime = 0;
+bool bluetoothOverrideActive = false;
+const unsigned long bluetoothOverrideDuration = 2000; // 2 seconds
+
+
+// Define pins for the front ultrasonic sensor
+#define FRONT_TRIG_PIN 49
+#define FRONT_ECHO_PIN 48
+
+// Define pins for the back ultrasonic sensor
+#define BACK_TRIG_PIN 53
+#define BACK_ECHO_PIN 52
+
+// For wheels stopping
+int currentLeftSpeed = 0;
+int currentRightSpeed = 0;
+
+
+
+// Function to measure distance using an ultrasonic sensor
+long readUltrasonic(int trigPin, int echoPin) {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  long duration = pulseIn(echoPin, HIGH);
+  long distance = duration * 0.034 / 2; // distance in cm
+  return distance;
+}
+
+
 /* Clear the current command parameters */
 void resetCommand() {
   cmd = NULL;
@@ -193,6 +230,7 @@ int runCommand() {
   case SERVO_READ:
     Serial.println(servos[arg1].getServo().read());
     break;
+
 #endif
     
 #ifdef USE_BASE
@@ -206,25 +244,83 @@ int runCommand() {
     resetPID();
     Serial.println("OK");
     break;
+
   case MOTOR_SPEEDS:
     /* Reset the auto stop timer */
     lastMotorCommand = millis();
+
+    // Check for forward motion: both speeds positive
+    if (arg1 > 0 && arg2 > 0) {
+      long frontDistance = readUltrasonic(FRONT_TRIG_PIN, FRONT_ECHO_PIN);
+      if (frontDistance < 10) {
+        setMotorSpeeds(0, 0);
+        moving = 0;
+        Serial.println("Obstacle Ahead: Cannot move forward!");
+        break;
+      }
+    }
+    // Check for backward motion: both speeds negative
+    if (arg1 < 0 && arg2 < 0) {
+      long backDistance = readUltrasonic(BACK_TRIG_PIN, BACK_ECHO_PIN);
+      if (backDistance < 10) {
+        setMotorSpeeds(0, 0);
+        moving = 0;
+        Serial.println("Obstacle Behind: Cannot move backward!");
+        break;
+      }
+    }
+    
     if (arg1 == 0 && arg2 == 0) {
       setMotorSpeeds(0, 0);
       resetPID();
       moving = 0;
     }
-    else moving = 1;
+    else {
+      moving = 1;
+      // Store the current speeds
+      currentLeftSpeed = arg1;
+      currentRightSpeed = arg2;
+      // Serial.println("Motr speeds"); 
+      // Serial.print(currentLeftSpeed);
+      // Serial.print(currentRightSpeed);
+    }
     leftPID.TargetTicksPerFrame = arg1;
     rightPID.TargetTicksPerFrame = arg2;
     Serial.println("OK"); 
     break;
+
   case MOTOR_RAW_PWM:
     /* Reset the auto stop timer */
     lastMotorCommand = millis();
     resetPID();
-    moving = 0; // Sneaky way to temporarily disable the PID
+    moving = 0; // Temporarily disable the PID
+    raw_moving = 1; 
     setMotorSpeeds(arg1, arg2);
+
+    // Check for forward motion: both speeds positive
+    if (arg1 > 0 && arg2 > 0) {
+      long frontDistance = readUltrasonic(FRONT_TRIG_PIN, FRONT_ECHO_PIN);
+      if (frontDistance < 10) {
+        setMotorSpeeds(0, 0);  // Stop the motors
+        moving = 0;
+        Serial.println("Obstacle Ahead: Cannot move forward!");
+        break;
+      }
+    }
+    // Check for backward motion: both speeds negative
+    if (arg1 < 0 && arg2 < 0) {
+      long backDistance = readUltrasonic(BACK_TRIG_PIN, BACK_ECHO_PIN);
+      if (backDistance < 10) {
+        setMotorSpeeds(0, 0);  // Stop the motors
+        moving = 0;
+        Serial.println("Obstacle Behind: Cannot move backward!");
+        break;
+      }
+    }
+
+    // Store the raw PWM values as current speeds
+    currentLeftSpeed = arg1;
+    currentRightSpeed = arg2;
     Serial.println("OK"); 
     break;
   case UPDATE_PID:
@@ -239,16 +335,41 @@ int runCommand() {
     Serial.println("OK");
     break;
 #endif
+
+  case READ_ULTRASONIC: {
+    long frontDistance = readUltrasonic(FRONT_TRIG_PIN, FRONT_ECHO_PIN);
+    long backDistance = readUltrasonic(BACK_TRIG_PIN, BACK_ECHO_PIN);
+    // Print distances separated by a space:
+    Serial.print(frontDistance);
+    Serial.print(" ");
+    Serial.println(backDistance);
+    break;
+  }
+
+  case TEST: {
+    Serial.print("test");
+    break;
+  }
+
   default:
     Serial.println("Invalid Command");
     break;
   }
 }
 
+
+
 /* Setup function--runs once at startup. */
 void setup() {
   Serial.begin(BAUDRATE);        // USB serial
   Serial1.begin(9600);       // Bluetooth serial
+    // Initialize ultrasonic sensor pins
+  pinMode(FRONT_TRIG_PIN, OUTPUT);
+  pinMode(FRONT_ECHO_PIN, INPUT);
+  pinMode(BACK_TRIG_PIN, OUTPUT);
+  pinMode(BACK_ECHO_PIN, INPUT);
+
+
 
 // Initialize the motor controller if used */
 #ifdef USE_BASE
@@ -290,11 +411,6 @@ void setup() {
 }
 
 
-unsigned long lastBluetoothCommandTime = 0;
-bool bluetoothOverrideActive = false;
-const unsigned long bluetoothOverrideDuration = 2000; // 2 seconds
-
-#define DEFAULT_SPEED 44 
 
 void injectCommand(const char* commandStr) {
   // Clear any previous command info.
@@ -338,32 +454,32 @@ void processBluetoothCommands() {
     
     switch (btCmd) {
       case '1': // forward: send "m 100 100"
-        injectCommand("m 44 44");
+        injectCommand("o 56 56");
         bluetoothOverrideActive = true;
         lastBluetoothCommandTime = millis();
         break;
         
       case '2': // backward: send "m -100 -100"
-        injectCommand("m -44 -44");
+        injectCommand("o -56 -56");
         bluetoothOverrideActive = true;
         lastBluetoothCommandTime = millis();
         break;
         
       case '3': // left: send "m -100 100"
-        injectCommand("m -44 44");
+        injectCommand("o -56 56");
         bluetoothOverrideActive = true;
         lastBluetoothCommandTime = millis();
         break;
         
       case '4': // right: send "m 100 -100"
-        injectCommand("m 44 -44");
+        injectCommand("o  56 -56");
         bluetoothOverrideActive = true;
         lastBluetoothCommandTime = millis();
         break;
         
       // Optionally, you can add a case for stopping the robot:
       case '0': // stop
-        injectCommand("m 0 0");
+        injectCommand("o 0 0");
         bluetoothOverrideActive = false;
         break;
         
@@ -372,8 +488,6 @@ void processBluetoothCommands() {
     }
   }
 }
-
-
 
 
 
@@ -443,7 +557,30 @@ void loop() {
     updatePID();
     nextPID += PID_INTERVAL;
   }
-  
+
+  // If the robot is currently moving (either moving or raw_moving), check the ultrasonic sensors
+  if (moving || raw_moving) {
+    long frontDistance = readUltrasonic(FRONT_TRIG_PIN, FRONT_ECHO_PIN);
+    long backDistance = readUltrasonic(BACK_TRIG_PIN, BACK_ECHO_PIN);
+
+    // If moving forward (both speeds positive) and an obstacle is detected in front:
+    if ((currentLeftSpeed > 0 && currentRightSpeed > 0) && frontDistance < 10) {
+      setMotorSpeeds(0, 0);
+      moving = 0;
+      raw_moving = 0; // Stop raw movement if obstacle detected
+      Serial.println("Safety Stop: Obstacle Ahead!");
+    }
+
+    // If moving backward (both speeds negative) and an obstacle is detected at the back:
+    if ((currentLeftSpeed < 0 && currentRightSpeed < 0) && backDistance < 10) {
+      setMotorSpeeds(0, 0);
+      moving = 0;
+      raw_moving = 0; // Stop raw movement if obstacle detected
+      Serial.println("Safety Stop: Obstacle Behind!");
+    }
+  }
+
+
   // Check to see if we have exceeded the auto-stop interval
   if ((millis() - lastMotorCommand) > AUTO_STOP_INTERVAL) {;
     setMotorSpeeds(0, 0);
