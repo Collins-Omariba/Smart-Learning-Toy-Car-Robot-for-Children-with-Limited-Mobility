@@ -247,7 +247,8 @@ int runCommand() {
 
 /* Setup function--runs once at startup. */
 void setup() {
-  Serial.begin(BAUDRATE);
+  Serial.begin(BAUDRATE);        // USB serial
+  Serial1.begin(9600);       // Bluetooth serial
 
 // Initialize the motor controller if used */
 #ifdef USE_BASE
@@ -287,6 +288,54 @@ void setup() {
     }
   #endif
 }
+
+
+#define BASE_SPEED 44
+
+void processBluetoothCommands() {
+  if (Serial1.available()) {
+    char btCmd = Serial1.read();
+        Serial.print("Received via Bluetooth: ");
+        Serial.println(btCmd);
+    switch (btCmd) {
+      case '1': // forward
+        setMotorSpeeds(BASE_SPEED, BASE_SPEED);
+        moving = 1;
+        lastMotorCommand = millis();
+        break;
+
+      case '2': // backward
+        setMotorSpeeds(-BASE_SPEED, -BASE_SPEED);
+        moving = 1;
+        lastMotorCommand = millis();
+        break;
+
+      case '3': // right
+        setMotorSpeeds(100, -100);
+        moving = 1;
+        lastMotorCommand = millis();
+        break;
+
+      case '4': // right
+        setMotorSpeeds(-100, 100);
+        moving = 1;
+        lastMotorCommand = millis();
+        break;
+
+      case '0': // stop (optional)
+        setMotorSpeeds(0, 0);
+        moving = 0;
+        break;
+
+      default:
+        // ignore any other input
+        break;
+    }
+  }
+}
+
+
+
 
 /* Enter the main loop.  Read and parse input from the serial port
    and run any valid commands. Run a PID calculation at the target
@@ -333,6 +382,9 @@ void loop() {
     }
   }
   
+// Bluetooth control (non-ROS)
+processBluetoothCommands();
+
 // If we are using base control, run a PID calculation at the appropriate intervals
 #ifdef USE_BASE
   if (millis() > nextPID) {
