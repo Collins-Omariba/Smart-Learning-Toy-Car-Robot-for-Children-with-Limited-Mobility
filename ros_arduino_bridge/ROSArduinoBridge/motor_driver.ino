@@ -57,10 +57,7 @@
   }
 #elif defined L298_MOTOR_DRIVER
 
-  // Manual servo movement code (Remove for normal functioning of ROS Arduino bridge)
   #include <Servo.h>
-
-
   Servo servo1;
   Servo servo2;
   //
@@ -68,8 +65,6 @@
   void initMotorController() {
     digitalWrite(RIGHT_MOTOR_ENABLE, HIGH);
     digitalWrite(LEFT_MOTOR_ENABLE, HIGH);
-
-    // Manual servo movement code (Remove for normal functioning of ROS Arduino bridge)
     servo1.attach(SERVO1_PIN);
     servo2.attach(SERVO2_PIN);
     //
@@ -97,7 +92,6 @@
     }
   }
   
-  // Manual servo movement code (Remove for normal functioning of ROS Arduino bridge)
   void moveServosSmoothly(int startAngle, int endAngle, int stepDelay) {
     if (startAngle < endAngle) {
         for (int pos = startAngle; pos <= endAngle; pos++) {
@@ -118,7 +112,6 @@
     setMotorSpeed(LEFT, leftSpeed);
     setMotorSpeed(RIGHT, rightSpeed);
 
-    // Manual servo movement code (Remove for normal functioning of ROS Arduino bridge)
     // Manual servo movement
     static int currentAngle = 90; // Neutral starting position
 
