@@ -6,7 +6,7 @@ import sys
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def main():
+def main(): 
     try:
         ser = serial.Serial('/dev/ttyACM0', 57600, timeout=1)
         logging.info("Serial port opened successfully")
@@ -17,7 +17,7 @@ def main():
     time.sleep(2)  # Wait for Arduino reset
     ser.reset_input_buffer()
 
-    command = "m -44 -44\r\n"
+    command = "o -56 -56\r\n"
     logging.info("Sending command: %s", command.strip())
     ser.write(command.encode('utf-8'))
     ser.flush()
