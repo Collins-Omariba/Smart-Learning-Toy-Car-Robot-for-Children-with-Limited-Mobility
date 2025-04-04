@@ -17,7 +17,7 @@ def main():
     time.sleep(2)  # Wait for Arduino reset
     ser.reset_input_buffer()
 
-    command = "m -50 -50\r\n"
+    command = "m -44 -44\r\n"
     logging.info("Sending command: %s", command.strip())
     ser.write(command.encode('utf-8'))
     ser.flush()
