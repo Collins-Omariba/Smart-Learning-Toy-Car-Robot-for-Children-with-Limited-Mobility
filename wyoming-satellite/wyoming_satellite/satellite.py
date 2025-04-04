@@ -1393,7 +1393,7 @@ class WakeStreamingSatellite(SatelliteBase):
 
         if self.is_streaming and self.streaming_start_time:
             elapsed_time = time.monotonic() - self.streaming_start_time
-            if elapsed_time < 12:
+            if elapsed_time < 8:
                 self.audio_buffer.extend(audio_bytes)
                 self.set_led_color(GREEN)  # User is speaking
             elif elapsed_time >= 12 and self.is_streaming:
@@ -1445,7 +1445,7 @@ class WakeStreamingSatellite(SatelliteBase):
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_circle.py"])
                     else:
                         CUSTOM_LOGGER.debug("Processing non-motor command")
-                        prompt_instructions = "You are an AI assistant for children. Respond clearly, concisely, and briefly. YOU ARE ENCOURAGED TO ASK VERY SHORT QUESTIONS IF NECESSARY AND IF ASKED TO TELL A STORY KEEP IT MEDIUM SHORT"
+                        prompt_instructions = "You are an AI assistant for children. Respond clearly, concisely, and briefly. IF YOU MUST ASK A QUESTION KEEP IT SHORT. WHEN ASKED TO TELL A STORY KEEP IT MEDIUM SHORT"
                         CUSTOM_LOGGER.debug("Sending transcript to Gemini API")
                         response = self.gemini_client.generate_content([prompt_instructions, transcript])
                         gemini_text = response.text
@@ -1469,11 +1469,18 @@ class WakeStreamingSatellite(SatelliteBase):
 
                             # Check if the response is a question
                             if gemini_text.strip().endswith('?'):
-                                await asyncio.sleep(6)
-                                CUSTOM_LOGGER.debug("Response is a question, mimicking wake word detection")
+                                base_sleep = 3  # Base sleep time in seconds
+                                extra_sleep_per_char = 0.05  
+                                text_length = len(gemini_text)
+                                sleep_time = base_sleep + (text_length * extra_sleep_per_char)
+
+                                await asyncio.sleep(sleep_time)
+                                CUSTOM_LOGGER.debug(f"Response is a question, sleeping for {sleep_time:.2f} seconds (based on text length)")
+                                
                                 # Mimic wake word detection after playback
                                 detection_event = Detection(name="hey_jarvis", timestamp=time.monotonic()).event()
                                 await self.event_from_wake(detection_event)  # Triggers existing wake word logic
+
                             else:
                                 self.set_led_color(BLUE)
                         else:
