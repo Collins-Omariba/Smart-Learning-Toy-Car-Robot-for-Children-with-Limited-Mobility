@@ -1396,7 +1396,7 @@ class WakeStreamingSatellite(SatelliteBase):
             if elapsed_time < 8:
                 self.audio_buffer.extend(audio_bytes)
                 self.set_led_color(GREEN)  # User is speaking
-            elif elapsed_time >= 12 and self.is_streaming:
+            elif elapsed_time >= 8 and self.is_streaming:
                 self.is_streaming = False
                 self.set_led_color(RED)  # Processing starts
                 temp_wav = "temp_recording.wav"
