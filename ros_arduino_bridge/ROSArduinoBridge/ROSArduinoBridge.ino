@@ -74,7 +74,7 @@
 // #define BAUDRATE     9600 //for debugging
 
 /* Maximum PWM signal */
-#define MAX_PWM   255
+#define MAX_PWM   56
 
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
@@ -145,7 +145,7 @@ long arg2;
 #define DEFAULT_SPEED 44 
 unsigned long lastBluetoothCommandTime = 0;
 bool bluetoothOverrideActive = false;
-const unsigned long bluetoothOverrideDuration = 2000; // 2 seconds
+const unsigned long bluetoothOverrideDuration = 400;
 
 
 // Define pins for the front ultrasonic sensor
@@ -454,32 +454,32 @@ void processBluetoothCommands() {
     
     switch (btCmd) {
       case '1': // forward: send "m 100 100"
-        injectCommand("o 56 56");
+        injectCommand("m 44 44");
         bluetoothOverrideActive = true;
         lastBluetoothCommandTime = millis();
         break;
         
       case '2': // backward: send "m -100 -100"
-        injectCommand("o -56 -56");
+        injectCommand("m -44 -44");
         bluetoothOverrideActive = true;
         lastBluetoothCommandTime = millis();
         break;
         
       case '3': // left: send "m -100 100"
-        injectCommand("o -56 56");
+        injectCommand("m -44 44");
         bluetoothOverrideActive = true;
         lastBluetoothCommandTime = millis();
         break;
         
       case '4': // right: send "m 100 -100"
-        injectCommand("o  56 -56");
+        injectCommand("m 44 -44");
         bluetoothOverrideActive = true;
         lastBluetoothCommandTime = millis();
         break;
         
       // Optionally, you can add a case for stopping the robot:
       case '0': // stop
-        injectCommand("o 0 0");
+        injectCommand("m 0 0");
         bluetoothOverrideActive = false;
         break;
         
