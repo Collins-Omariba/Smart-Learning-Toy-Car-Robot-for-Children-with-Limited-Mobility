@@ -1297,6 +1297,10 @@ class APA102:
     def cleanup(self):
         self.spi.close()
 
+
+
+
+
 class WakeStreamingSatellite(SatelliteBase):
     def __init__(self, settings: SatelliteSettings) -> None:
         super().__init__(settings)
@@ -1377,6 +1381,14 @@ class WakeStreamingSatellite(SatelliteBase):
         except Exception as e:
             CUSTOM_LOGGER.error(f"Error in loading sound loop: {e}")
 
+    def get_child_age(self) -> int:
+        try:
+            with open('/home/fyp213/age.txt', 'r') as f:
+                age = int(f.read().strip())
+            return age
+        except (FileNotFoundError, ValueError):
+            return 5  # Default age if file is missing or invalid
+    
     async def event_from_mic(self, event: Event, audio_bytes: Optional[bytes] = None) -> None:
         if self.is_speaking:
             CUSTOM_LOGGER.debug("Ignoring mic event: currently speaking")
@@ -1451,9 +1463,15 @@ class WakeStreamingSatellite(SatelliteBase):
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_triangle.py"])
 
                     else:
-                        CUSTOM_LOGGER.debug("Processing non-motor command")
-                        prompt_instructions = "You are an AI assistant for children. Respond clearly, concisely, and briefly. IF YOU MUST ASK A QUESTION KEEP IT SHORT. WHEN ASKED TO TELL A STORY KEEP IT MEDIUM SHORT"
-                        CUSTOM_LOGGER.debug("Sending transcript to Gemini API")
+                        # Process non-motor commands with age-appropriate instructions
+                        age = self.get_child_age()
+                        if age <= 7:
+                            prompt_instructions = "You are an AI assistant for children aged 4-7. Use simple words, short sentences, and a friendly tone.FOR QUESTIONS KEEP THEM VERY SHORT"
+                        else:
+                            prompt_instructions = "You are an AI assistant for children aged 8-12. Provide clear, concise, and informative answers.FOR QUESTIONS KEEP THEM VERY SHORT"
+                        
+                        CUSTOM_LOGGER.debug(f"Sending transcript to Gemini API with age-appropriate instructions with prompt {prompt_instructions}")
+                        
                         response = self.gemini_client.generate_content([prompt_instructions, transcript])
                         gemini_text = response.text
                         CUSTOM_LOGGER.debug(f"Gemini response: {gemini_text}")
