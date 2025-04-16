@@ -1443,6 +1443,13 @@ class WakeStreamingSatellite(SatelliteBase):
                     elif "move in a circle" in transcript_lower:
                         CUSTOM_LOGGER.info("Move in circle detected")
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_circle.py"])
+                    elif "move in a square" in transcript_lower:
+                        CUSTOM_LOGGER.info("Move in square detected")
+                        await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_square.py"])
+                    elif "move in a triangle" in transcript_lower:
+                        CUSTOM_LOGGER.info("Move in triangle detected")
+                        await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_triangle.py"])
+
                     else:
                         CUSTOM_LOGGER.debug("Processing non-motor command")
                         prompt_instructions = "You are an AI assistant for children. Respond clearly, concisely, and briefly. IF YOU MUST ASK A QUESTION KEEP IT SHORT. WHEN ASKED TO TELL A STORY KEEP IT MEDIUM SHORT"
