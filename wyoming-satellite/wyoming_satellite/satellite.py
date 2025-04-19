@@ -1511,8 +1511,6 @@ class WakeStreamingSatellite(SatelliteBase):
 
             await self.trigger_detection(detection)
             CUSTOM_LOGGER.debug("Trigger detection sent")
-            # asyncio.create_task(self._delayed_play_sound(delay=10))
-            # CUSTOM_LOGGER.debug("Scheduled delayed play sound")
 
     async def robot_ear_dance(self) -> None:
         CUSTOM_LOGGER.info("Starting ear dance in background")
@@ -1540,10 +1538,6 @@ class WakeStreamingSatellite(SatelliteBase):
     #         CUSTOM_LOGGER.error(f"Error logging ear dance outcome: {e}")
     #         CUSTOM_LOGGER.debug("Ear dance subprocess started")
 
-    async def _delayed_play_sound(self, delay: float) -> None:
-        await asyncio.sleep(delay)
-        CUSTOM_LOGGER.debug("Playing done sound")
-        await self.trigger_end_of_detection()
 
 
     async def play_tts_audio(self, wav_buffer: bytes) -> None:
