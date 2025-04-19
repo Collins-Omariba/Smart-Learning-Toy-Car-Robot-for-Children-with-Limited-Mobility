@@ -1445,10 +1445,10 @@ class WakeStreamingSatellite(SatelliteBase):
                             await self.play_tts_audio(tts_audio)  # Play the audio (LED managed inside method)
                             CUSTOM_LOGGER.debug("TTS audio played")
 
-                            # Check if the response contains a question mark
-                            if '?' in gemini_text:
+                            # Check if the response contains a question mark and is less than 300 characters
+                            if '?' in gemini_text and len(gemini_text) < 300:
                                 base_sleep = 3  # Base sleep time in seconds
-                                extra_sleep_per_char = 0.05  
+                                extra_sleep_per_char = 0.055  
                                 text_length = len(gemini_text)
                                 sleep_time = base_sleep + (text_length * extra_sleep_per_char)
 
