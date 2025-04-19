@@ -58,6 +58,7 @@
 #elif defined L298_MOTOR_DRIVER
 
   #include <Servo.h>
+  #include <stdlib.h>  // For random()
   Servo servo1;
   Servo servo2;
   //
@@ -107,6 +108,27 @@
         }
     }
 }
+
+
+
+void randomEarWiggle() {
+  if (!servo1.attached() || !servo2.attached()) return;  // Safety check
+
+  unsigned long startTime = millis();
+  unsigned long duration = 3500; 
+
+  while (millis() - startTime < duration) {
+    int angle = random(60, 120);              // Random angle between 60 and 120
+    servo1.write(angle);
+    servo2.write(180 - angle);                // Opposite sync
+    delay(random(150, 300));                  // Short random delay for wiggle
+  }
+
+  // Return to neutral
+  servo1.write(90);
+  servo2.write(90);
+}
+
 
   void setMotorSpeeds(int leftSpeed, int rightSpeed) {
     setMotorSpeed(LEFT, leftSpeed);

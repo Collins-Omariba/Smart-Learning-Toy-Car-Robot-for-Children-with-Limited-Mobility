@@ -1514,20 +1514,63 @@ class WakeStreamingSatellite(SatelliteBase):
             # asyncio.create_task(self._delayed_play_sound(delay=10))
             # CUSTOM_LOGGER.debug("Scheduled delayed play sound")
 
+    async def robot_ear_dance(self) -> None:
+        CUSTOM_LOGGER.info("Starting ear dance in background")
+        try:
+            # Run the ear dance script asynchronously and detach
+            process = await asyncio.create_subprocess_exec(
+                "python3", "/home/fyp213/motor_run_files/robot_ear_dance.py",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            # asyncio.create_task(self._log_ear_dance_outcome(process))
+        except Exception as e:
+            CUSTOM_LOGGER.error(f"Failed to start ear dance subprocess: {e}")
+
+    # async def _log_ear_dance_outcome(self, process: asyncio.subprocess.Process) -> None:
+    #     """Background task to log the outcome of the ear dance subprocess."""
+    #     try:
+    #         stdout, stderr = await process.communicate()
+    #         if process.returncode == 0:
+    #             CUSTOM_LOGGER.debug(f"Ear dance completed: {stdout.decode()}")
+    #         else:
+    #             CUSTOM_LOGGER.error(f"Ear dance failed with code {process.returncode}: {stderr.decode()}")
+    #     except Exception as e:
+    #         CUSTOM_LOGGER.error(f"Error logging ear dance outcome: {e}")
+    #         CUSTOM_LOGGER.debug("Ear dance subprocess started")
+
     async def _delayed_play_sound(self, delay: float) -> None:
         await asyncio.sleep(delay)
         CUSTOM_LOGGER.debug("Playing done sound")
         await self.trigger_end_of_detection()
 
+
     async def play_tts_audio(self, wav_buffer: bytes) -> None:
-        CUSTOM_LOGGER.debug("Playing TTS audio")
-        self.set_led_color(BLUE)  # Set LED to blue before starting playback
-        await self.event_to_snd(AudioStart(rate=16000, width=2, channels=1).event())
-        chunk_size = self.settings.snd.samples_per_chunk * 2
-        for i in range(0, len(wav_buffer), chunk_size):
-            await self.event_to_snd(AudioChunk(rate=16000, width=2, channels=1, audio=wav_buffer[i:i + chunk_size]).event())
-        await self.event_to_snd(AudioStop().event())  
-        CUSTOM_LOGGER.debug("Finished playing TTS audio")
+        CUSTOM_LOGGER.debug("Starting TTS audio playback")
+        try:
+            self.set_led_color(BLUE)  # Set LED to blue before starting playback
+            CUSTOM_LOGGER.debug("Scheduling ear dance task")
+            # Fire and forget: start ear dance in background
+            asyncio.create_task(self.robot_ear_dance())
+            
+            CUSTOM_LOGGER.debug("Sending AudioStart event")
+            await self.event_to_snd(AudioStart(rate=16000, width=2, channels=1).event())
+            
+            chunk_size = self.settings.snd.samples_per_chunk * 2
+            CUSTOM_LOGGER.debug(f"Sending {len(wav_buffer)//chunk_size + 1} audio chunks")
+            for i in range(0, len(wav_buffer), chunk_size):
+                await self.event_to_snd(
+                    AudioChunk(rate=16000, width=2, channels=1, audio=wav_buffer[i:i + chunk_size]).event()
+                )
+            
+            CUSTOM_LOGGER.debug("Sending AudioStop event")
+            await self.event_to_snd(AudioStop().event())
+            
+            CUSTOM_LOGGER.debug("Finished playing TTS audio")
+        except Exception as e:
+            CUSTOM_LOGGER.error(f"Error during TTS audio playback: {e}")
+            self.set_led_color(BLUE)  # Reset LED on error
 
     async def generate_tts_audio(self, text: str) -> Optional[bytes]:
         CUSTOM_LOGGER.debug("Generating TTS audio")

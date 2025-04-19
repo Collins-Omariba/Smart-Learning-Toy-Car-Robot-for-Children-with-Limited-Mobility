@@ -23,6 +23,7 @@
 #define RIGHT           1
 #define READ_ULTRASONIC  'U'
 #define TEST  'T'
+#define DANCE 'Z'
 
 #endif
 

@@ -222,6 +222,9 @@ int runCommand() {
   case PING:
     Serial.println(Ping(arg1));
     break;
+  case DANCE:
+    randomEarWiggle();
+    break;
 #ifdef USE_SERVOS
   case SERVO_WRITE:
     servos[arg1].setTargetPosition(arg2);
