@@ -32,7 +32,7 @@ const long MAX_ITERM = 500;   // Maximum allowed value for the integrator
 unsigned char moving = 0; // flag indicating if the base is in motion
 unsigned char raw_moving = 0; // flag indicating if the base is in motion with raw pwm
 
-int PWM_max = 56;
+int PWM_max = 80;
 
 /*
  * Reset the PID variables to prevent startup spikes.
