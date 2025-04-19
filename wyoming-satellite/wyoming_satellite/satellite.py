@@ -1310,9 +1310,6 @@ class WakeStreamingSatellite(SatelliteBase):
         self._debug_recording_timestamp: Optional[int] = None
         self.streaming_start_time = None
         self.audio_buffer = bytearray()
-        self.loading_task = None
-        self.loading_wav_path = "/home/fyp213/wyoming-satellite/sounds/loading.wav"
-        self.loading_audio_data = None
 
         # Initialize LED controller
         self.leds = APA102(num_led=3, global_brightness=31)
@@ -1320,16 +1317,6 @@ class WakeStreamingSatellite(SatelliteBase):
         self.set_led_color(BLUE)
 
         CUSTOM_LOGGER.debug("Initializing WakeStreamingSatellite")
-        try:
-            with wave.open(self.loading_wav_path, "rb") as wf:
-                self.loading_rate = wf.getframerate()
-                self.loading_width = wf.getsampwidth()
-                self.loading_channels = wf.getnchannels()
-                self.loading_audio_data = wf.readframes(wf.getnframes())
-            CUSTOM_LOGGER.debug("Loaded loading.wav successfully")
-        except Exception as e:
-            CUSTOM_LOGGER.error(f"Failed to load loading.wav: {e}")
-            self.loading_audio_data = None
 
         CUSTOM_LOGGER.debug("Loading Whisper tiny.en model")
         try:
@@ -1360,26 +1347,6 @@ class WakeStreamingSatellite(SatelliteBase):
             self.leds.set_pixel(i, color[0], color[1], color[2])
         self.leds.show()
 
-    async def play_loading_sound(self):
-        if self.loading_audio_data is None:
-            CUSTOM_LOGGER.error("No loading audio data available")
-            return
-
-        CUSTOM_LOGGER.debug("Starting loading sound loop")
-        chunk_size = self.settings.snd.samples_per_chunk * self.loading_width
-        try:
-            await self.event_to_snd(AudioStart(rate=self.loading_rate, width=self.loading_width, channels=self.loading_channels).event())
-            for i in range(0, len(self.loading_audio_data), chunk_size):
-                chunk = self.loading_audio_data[i:i + chunk_size]
-                await self.event_to_snd(AudioChunk(rate=self.loading_rate, width=self.loading_width, channels=self.loading_channels, audio=chunk).event())
-            await self.event_to_snd(AudioStop().event())
-            await asyncio.sleep(0.05)
-        except asyncio.CancelledError:
-            CUSTOM_LOGGER.debug("Loading sound loop cancelled")
-            await self.event_to_snd(AudioStop().event())
-            raise
-        except Exception as e:
-            CUSTOM_LOGGER.error(f"Error in loading sound loop: {e}")
 
     def get_child_age(self) -> int:
         try:
@@ -1405,10 +1372,10 @@ class WakeStreamingSatellite(SatelliteBase):
 
         if self.is_streaming and self.streaming_start_time:
             elapsed_time = time.monotonic() - self.streaming_start_time
-            if elapsed_time < 8:
+            if elapsed_time < 6:
                 self.audio_buffer.extend(audio_bytes)
                 self.set_led_color(GREEN)  # User is speaking
-            elif elapsed_time >= 8 and self.is_streaming:
+            elif elapsed_time >= 6 and self.is_streaming:
                 self.is_streaming = False
                 self.set_led_color(RED)  # Processing starts
                 temp_wav = "temp_recording.wav"
@@ -1436,13 +1403,6 @@ class WakeStreamingSatellite(SatelliteBase):
                 os.remove(temp_wav)
                 CUSTOM_LOGGER.debug("Temporary WAV removed")
 
-                CUSTOM_LOGGER.debug("Waiting 1 second before starting loading sound")
-                await asyncio.sleep(1)
-                if self.loading_task is None or self.loading_task.done():
-                    self.loading_task = asyncio.create_task(self.play_loading_sound())
-                    CUSTOM_LOGGER.debug("Loading sound task started")
-                else:
-                    CUSTOM_LOGGER.debug("Loading sound task already running")
 
                 transcript_lower = transcript.lower()
                 if transcript:
@@ -1481,14 +1441,7 @@ class WakeStreamingSatellite(SatelliteBase):
                         CUSTOM_LOGGER.debug(f"TTS audio generated, length: {len(tts_audio) if tts_audio else 'None'}")
                         if tts_audio and self.settings.snd.enabled:
                             CUSTOM_LOGGER.debug("Preparing to play TTS")
-                            if self.loading_task and not self.loading_task.done():
-                                CUSTOM_LOGGER.debug("Cancelling loading sound before TTS")
-                                self.loading_task.cancel()
-                                try:
-                                    await self.loading_task
-                                    CUSTOM_LOGGER.debug("Loading sound stopped before TTS")
-                                except asyncio.CancelledError:
-                                    CUSTOM_LOGGER.debug("Loading sound cancellation confirmed")
+
                             await self.play_tts_audio(tts_audio)  # Play the audio (LED managed inside method)
                             CUSTOM_LOGGER.debug("TTS audio played")
 
@@ -1515,14 +1468,7 @@ class WakeStreamingSatellite(SatelliteBase):
                 if self.stt_audio_writer is not None:
                     self.stt_audio_writer.stop()
                     CUSTOM_LOGGER.debug("STT audio writer stopped")
-                if self.loading_task and not self.loading_task.done():
-                    CUSTOM_LOGGER.debug("Cancelling loading sound at cleanup")
-                    self.loading_task.cancel()
-                    try:
-                        await self.loading_task
-                        CUSTOM_LOGGER.debug("Loading sound stopped at cleanup")
-                    except asyncio.CancelledError:
-                        CUSTOM_LOGGER.debug("Loading sound cancellation confirmed at cleanup")
+
                 await self._send_wake_detect()
                 CUSTOM_LOGGER.debug("Wake detect sent")
                 self.set_led_color(BLUE) 
@@ -1558,8 +1504,8 @@ class WakeStreamingSatellite(SatelliteBase):
 
             await self.trigger_detection(detection)
             CUSTOM_LOGGER.debug("Trigger detection sent")
-            asyncio.create_task(self._delayed_play_sound(delay=10))
-            CUSTOM_LOGGER.debug("Scheduled delayed play sound")
+            # asyncio.create_task(self._delayed_play_sound(delay=10))
+            # CUSTOM_LOGGER.debug("Scheduled delayed play sound")
 
     async def _delayed_play_sound(self, delay: float) -> None:
         await asyncio.sleep(delay)
