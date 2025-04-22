@@ -1362,7 +1362,7 @@ class WakeStreamingSatellite(SatelliteBase):
             return age
         except (FileNotFoundError, ValueError):
             return 5  # Default age if file is missing or invalid
-    
+        
     async def event_from_mic(self, event: Event, audio_bytes: Optional[bytes] = None) -> None:
         if self.is_speaking:
             CUSTOM_LOGGER.debug("Ignoring mic event: currently speaking")
@@ -1404,15 +1404,38 @@ class WakeStreamingSatellite(SatelliteBase):
 
                 CUSTOM_LOGGER.debug("Transcribing audio with Whisper")
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, self.whisper_model.transcribe, temp_wav)
-                transcript = result["text"].strip()
-                CUSTOM_LOGGER.debug(f"Transcription complete: {transcript}")
+                try:
+                    # Attempt transcription with a 15-second timeout
+                    result = await asyncio.wait_for(
+                        loop.run_in_executor(None, self.whisper_model.transcribe, temp_wav),
+                        timeout=15
+                    )
+                    transcript = result["text"].strip()
+                    CUSTOM_LOGGER.debug(f"Transcription complete: {transcript}")
+                except asyncio.TimeoutError:
+                    # Handle timeout: clean up and prompt user to repeat
+                    CUSTOM_LOGGER.debug("Transcription timed out after 15 seconds")
+                    if self.stt_audio_writer is not None:
+                        self.stt_audio_writer.stop()
+                        CUSTOM_LOGGER.debug("STT audio writer stopped due to timeout")
+                    os.remove(temp_wav)
+                    timeout_message = "I'm sorry, I didn't catch that. Could you please repeat your question?"
+                    tts_audio = await self.generate_tts_audio(timeout_message)
+                    if tts_audio and self.settings.snd.enabled:
+                        await self.play_tts_audio(tts_audio)
+                        duration = len(tts_audio) / (16000 * 2)  # 16000 Hz, 2 bytes/sample
+                        await asyncio.sleep(duration)
+                    await self._send_wake_detect()
+                    self.set_led_color(BLUE)
+                    return
+
+                # Clean up WAV file after successful transcription
                 os.remove(temp_wav)
                 CUSTOM_LOGGER.debug("Temporary WAV removed")
 
-
-                transcript_lower = transcript.lower()
                 if transcript:
+                    # Process the transcript as before
+                    transcript_lower = transcript.lower()
                     if "move forward" in transcript_lower:
                         CUSTOM_LOGGER.info("Move forward detected")
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_forward.py"])
@@ -1428,57 +1451,57 @@ class WakeStreamingSatellite(SatelliteBase):
                     elif "move in a triangle" in transcript_lower:
                         CUSTOM_LOGGER.info("Move in triangle detected")
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_triangle.py"])
-
                     else:
                         # Process non-motor commands with age-appropriate instructions
                         age = self.get_child_age()
                         if age <= 7:
-                            prompt_instructions = "You are an AI assistant for children aged 4-7. Use simple words, short sentences, and a friendly tone.FOR QUESTIONS KEEP THEM VERY SHORT"
+                            prompt_instructions = "You are an AI assistant for children aged 4-7. Use simple words, short sentences, and a friendly tone. FOR QUESTIONS KEEP THEM VERY SHORT"
                         else:
-                            prompt_instructions = "You are an AI assistant for children aged 8-12. Provide clear, concise, and informative answers.FOR QUESTIONS KEEP THEM VERY SHORT"
+                            prompt_instructions = "You are an AI assistant for children aged 8-12. Provide clear, concise, and informative answers. FOR QUESTIONS KEEP THEM VERY SHORT"
                         
                         CUSTOM_LOGGER.debug(f"Sending transcript to Gemini API with age-appropriate instructions with prompt {prompt_instructions}")
-                        
                         response = self.gemini_client.generate_content([prompt_instructions, transcript])
                         gemini_text = response.text
                         CUSTOM_LOGGER.debug(f"Gemini response: {gemini_text}")
 
-                        CUSTOM_LOGGER.debug("Generating TTS audio")
                         tts_audio = await self.generate_tts_audio(gemini_text)
-                        CUSTOM_LOGGER.debug(f"TTS audio generated, length: {len(tts_audio) if tts_audio else 'None'}")
                         if tts_audio and self.settings.snd.enabled:
-                            CUSTOM_LOGGER.debug("Preparing to play TTS")
-
-                            await self.play_tts_audio(tts_audio)  # Play the audio (LED managed inside method)
-                            CUSTOM_LOGGER.debug("TTS audio played")
-
-                            # Check if the response contains a question mark and is less than 300 characters
+                            await self.play_tts_audio(tts_audio)
                             if '?' in gemini_text and len(gemini_text) < 300:
-                                base_sleep = 3  # Base sleep time in seconds
-                                extra_sleep_per_char = 0.055  
+                                base_sleep = 3
+                                extra_sleep_per_char = 0.055
                                 text_length = len(gemini_text)
                                 sleep_time = base_sleep + (text_length * extra_sleep_per_char)
-
                                 await asyncio.sleep(sleep_time)
-                                CUSTOM_LOGGER.debug(f"Response is a question, sleeping for {sleep_time:.2f} seconds (based on text length)")
-                                
-                                # Mimic wake word detection after playback
                                 detection_event = Detection(name="hey_jarvis", timestamp=time.monotonic()).event()
-                                await self.event_from_wake(detection_event)  # Triggers existing wake word logic
-
+                                await self.event_from_wake(detection_event)
                             else:
                                 self.set_led_color(BLUE)
                         else:
                             CUSTOM_LOGGER.error("No TTS audio or sound disabled")
+                else:
+                    # Handle empty transcript
+                    CUSTOM_LOGGER.debug("Empty transcript detected")
+                    if self.stt_audio_writer is not None:
+                        self.stt_audio_writer.stop()
+                        CUSTOM_LOGGER.debug("STT audio writer stopped due to empty transcript")
+                    timeout_message = "I'm sorry, I didn't catch that. Could you please repeat your question?"
+                    tts_audio = await self.generate_tts_audio(timeout_message)
+                    if tts_audio and self.settings.snd.enabled:
+                        await self.play_tts_audio(tts_audio)
+                        duration = len(tts_audio) / (16000 * 2)  # 16000 Hz, 2 bytes/sample
+                        await asyncio.sleep(duration)
+                    await self._send_wake_detect()
+                    self.set_led_color(BLUE)
+                    return
 
-                CUSTOM_LOGGER.debug("Starting cleanup")
+                # Cleanup after processing (only if transcript was not empty)
                 if self.stt_audio_writer is not None:
                     self.stt_audio_writer.stop()
                     CUSTOM_LOGGER.debug("STT audio writer stopped")
-
                 await self._send_wake_detect()
                 CUSTOM_LOGGER.debug("Wake detect sent")
-                self.set_led_color(BLUE) 
+                self.set_led_color(BLUE)
         else:
             await self.event_to_wake(event)
 
