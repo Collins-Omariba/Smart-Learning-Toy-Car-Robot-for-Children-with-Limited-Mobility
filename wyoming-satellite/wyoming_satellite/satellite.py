@@ -1405,16 +1405,16 @@ class WakeStreamingSatellite(SatelliteBase):
                 CUSTOM_LOGGER.debug("Transcribing audio with Whisper")
                 loop = asyncio.get_running_loop()
                 try:
-                    # Attempt transcription with a 15-second timeout
+                    # Attempt transcription with a 10-second timeout
                     result = await asyncio.wait_for(
                         loop.run_in_executor(None, self.whisper_model.transcribe, temp_wav),
-                        timeout=15
+                        timeout=10
                     )
                     transcript = result["text"].strip()
                     CUSTOM_LOGGER.debug(f"Transcription complete: {transcript}")
                 except asyncio.TimeoutError:
                     # Handle timeout: clean up and prompt user to repeat
-                    CUSTOM_LOGGER.debug("Transcription timed out after 15 seconds")
+                    CUSTOM_LOGGER.debug("Transcription timed out after 10 seconds")
                     if self.stt_audio_writer is not None:
                         self.stt_audio_writer.stop()
                         CUSTOM_LOGGER.debug("STT audio writer stopped due to timeout")
