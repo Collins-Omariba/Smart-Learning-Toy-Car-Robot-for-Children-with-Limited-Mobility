@@ -1455,9 +1455,9 @@ class WakeStreamingSatellite(SatelliteBase):
                         # Process non-motor commands with age-appropriate instructions
                         age = self.get_child_age()
                         if age <= 7:
-                            prompt_instructions = "You are an AI assistant for children aged 4-7. Use simple words, short sentences, and a friendly tone. FOR QUESTIONS KEEP THEM VERY SHORT"
+                            prompt_instructions = "You are an AI assistant for children aged 4-7. Use simple words, short sentences, and a friendly tone. FOR QUESTIONS KEEP THEM VERY SHORT.DON'T USE ASTERISKS AT ALL IN YOUR RESPONSES"
                         else:
-                            prompt_instructions = "You are an AI assistant for children aged 8-12. Provide clear, concise, and informative answers. FOR QUESTIONS KEEP THEM VERY SHORT"
+                            prompt_instructions = "You are an AI assistant for children aged 8-12. Provide clear, concise, and informative answers. FOR QUESTIONS KEEP THEM VERY SHORT.DON'T USE ASTERISKS AT ALL IN YOUR RESPONSES"
                         
                         CUSTOM_LOGGER.debug(f"Sending transcript to Gemini API with age-appropriate instructions with prompt {prompt_instructions}")
                         response = self.gemini_client.generate_content([prompt_instructions, transcript])
@@ -1467,9 +1467,9 @@ class WakeStreamingSatellite(SatelliteBase):
                         tts_audio = await self.generate_tts_audio(gemini_text)
                         if tts_audio and self.settings.snd.enabled:
                             await self.play_tts_audio(tts_audio)
-                            if '?' in gemini_text and len(gemini_text) < 300:
+                            if '?' in gemini_text and len(gemini_text) < 100:
                                 base_sleep = 3
-                                extra_sleep_per_char = 0.055
+                                extra_sleep_per_char = 0.06
                                 text_length = len(gemini_text)
                                 sleep_time = base_sleep + (text_length * extra_sleep_per_char)
                                 await asyncio.sleep(sleep_time)
