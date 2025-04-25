@@ -1,5 +1,12 @@
 # FINAL-YEAR-PROJECT-CODE
-[2-Microphone Setup Tutorial](wyoming-satellite/docs/tutorial_2mic.md) - > ⚠️ **Warning:** For `standalone-bot` do not setup the led service and remember to change the various paths and username accordingly.
+[2-Microphone Setup Tutorial](wyoming-satellite/docs/tutorial_2mic.md) - > ⚠️ **Warning:** For `standalone-bot` do not setup the led service and remember to change the various paths and username accordingly. Also setup piper in the following folders as shown
+
+```
+           "/home/fyp213/piper_voices/en_US-amy-medium.onnx"
+           "/home/fyp213/piper_voices/en_US-amy-medium.onnx.json"
+```
+
+Replace `fyp213` with your username in the above paths and in the relevant code in WakeStreamingSatellite class.
 
 
 CHECK `standalone-bot` (The currently default and main version) branch for the code of the standalone bot. This is able to operate without the server
