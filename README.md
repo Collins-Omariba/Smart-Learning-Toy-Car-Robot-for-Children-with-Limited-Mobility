@@ -39,7 +39,7 @@ The original `WakeStreamingSatellite` class relied heavily on server-based proce
 
 ### 4. Local Text-to-Speech (TTS)  
 - **Original**: TTS was server-generated.  
-- **Modification**: The Google Text-to-Speech (gTTS) library converts text into audio locally.
+- **Modification**: The piper tts library converts text into audio locally.
 
 ---
 
@@ -129,7 +129,7 @@ The original `WakeStreamingSatellite` class relied heavily on server-based proce
 ### Motor Control  
 - Runs Python scripts which send serial command based on movement commands to an arduino running the `ros_arduino_bridge` code .
 
-### Text-to-Speech (gTTS)  
+### Text-to-Speech (Piper TTS)  
 - Converts text to audio for response playback.
 
 ### Audio Buffer  
@@ -165,7 +165,7 @@ The original `WakeStreamingSatellite` class relied heavily on server-based proce
   - **Ages >7**: Clear, informative content.
 
 ### 6. Response Playback and Interaction  
-- Response played using gTTS.  
+- Response played using piper tts.  
 - LED resets to **Blue**.  
 - If a question, simulates wake detection for child’s reply.
 
@@ -197,7 +197,7 @@ The LEDs provide intuitive visual feedback:
 | Error Handling | Minimal | Enhanced with logging |
 | Wifi connection alert | None | Provides feedback if no connection |
 | Configuration | Server-oriented | Local file paths |
-| TTS | Server-based | Local quering of gTTS |
+| TTS | Server-based| Local quering of piper TTS |
 | STT | Server-based | Local Whisper model |
 
 ---
