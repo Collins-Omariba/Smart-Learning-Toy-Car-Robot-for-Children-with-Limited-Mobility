@@ -11,7 +11,8 @@ import io
 import wave
 import whisper
 import google.generativeai as genai
-from gtts import gTTS
+# from gtts import gTTS
+from piper import PiperVoice
 import os
 import json
 import subprocess
@@ -1323,6 +1324,18 @@ class WakeStreamingSatellite(SatelliteBase):
         self.leds.clock_start_frame()
         self.set_led_color(BLUE)
 
+        # Initialize Piper TTS
+        CUSTOM_LOGGER.debug("Initializing Piper TTS")
+        try:
+            voice_model_path = "/home/fyp213/piper_voices/en_US-amy-medium.onnx"
+            voice_config_path = "/home/fyp213/piper_voices/en_US-amy-medium.onnx.json"
+            self.piper_voice = PiperVoice.load(voice_model_path, config_path=voice_config_path)
+            CUSTOM_LOGGER.debug("Piper TTS initialized successfully")
+        except Exception as e:
+            CUSTOM_LOGGER.error(f"Failed to initialize Piper TTS: {e}")
+            raise
+
+
         CUSTOM_LOGGER.debug("Initializing WakeStreamingSatellite")
 
         CUSTOM_LOGGER.debug("Loading Whisper tiny.en model")
@@ -1405,16 +1418,16 @@ class WakeStreamingSatellite(SatelliteBase):
                 CUSTOM_LOGGER.debug("Transcribing audio with Whisper")
                 loop = asyncio.get_running_loop()
                 try:
-                    # Attempt transcription with a 10-second timeout
+                    # Attempt transcription with a 12-second timeout
                     result = await asyncio.wait_for(
                         loop.run_in_executor(None, self.whisper_model.transcribe, temp_wav),
-                        timeout=10
+                        timeout=12
                     )
                     transcript = result["text"].strip()
                     CUSTOM_LOGGER.debug(f"Transcription complete: {transcript}")
                 except asyncio.TimeoutError:
                     # Handle timeout: clean up and prompt user to repeat
-                    CUSTOM_LOGGER.debug("Transcription timed out after 10 seconds")
+                    CUSTOM_LOGGER.debug("Transcription timed out after 12 seconds")
                     if self.stt_audio_writer is not None:
                         self.stt_audio_writer.stop()
                         CUSTOM_LOGGER.debug("STT audio writer stopped due to timeout")
@@ -1589,27 +1602,68 @@ class WakeStreamingSatellite(SatelliteBase):
             CUSTOM_LOGGER.error(f"Error during TTS audio playback: {e}")
             self.set_led_color(BLUE)  # Reset LED on error
 
+    # async def generate_tts_audio(self, text: str) -> Optional[bytes]:
+    #     CUSTOM_LOGGER.debug("Generating TTS audio")
+    #     try:
+    #         tts = gTTS(text=text, lang='en', slow=False)
+    #         temp_mp3 = "temp.mp3"
+    #         temp_wav = "temp.wav"
+    #         CUSTOM_LOGGER.debug("Saving to temporary MP3")
+    #         tts.save(temp_mp3)
+    #         CUSTOM_LOGGER.debug("Converting MP3 to WAV")
+    #         subprocess.run(["ffmpeg", "-i", temp_mp3, "-ar", "16000", "-ac", "1", "-f", "wav", temp_wav], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    #         CUSTOM_LOGGER.debug("Reading WAV data")
+    #         with open(temp_wav, "rb") as f:
+    #             wav_data = f.read()
+    #         os.remove(temp_mp3)
+    #         os.remove(temp_wav)
+    #         CUSTOM_LOGGER.debug("TTS audio generated successfully")
+    #         return wav_data
+    #     except Exception as e:
+    #         CUSTOM_LOGGER.error(f"TTS generation failed: {e}")
+    #         return None
+
     async def generate_tts_audio(self, text: str) -> Optional[bytes]:
-        CUSTOM_LOGGER.debug("Generating TTS audio")
+        CUSTOM_LOGGER.debug("Generating TTS audio with Piper")
+
         try:
-            tts = gTTS(text=text, lang='en', slow=False)
-            temp_mp3 = "temp.mp3"
             temp_wav = "temp.wav"
-            CUSTOM_LOGGER.debug("Saving to temporary MP3")
-            tts.save(temp_mp3)
-            CUSTOM_LOGGER.debug("Converting MP3 to WAV")
-            subprocess.run(["ffmpeg", "-i", temp_mp3, "-ar", "16000", "-ac", "1", "-f", "wav", temp_wav], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            temp_wav_converted = "temp_converted.wav"
+            CUSTOM_LOGGER.debug(f"Synthesizing text: {text}")
+
+            # Create a WAV file with correct parameters for Piper
+            import wave
+            with wave.open(temp_wav, "wb") as wav_file:
+                wav_file.setnchannels(1)  # Mono
+                wav_file.setsampwidth(2)  # 16-bit
+                wav_file.setframerate(self.piper_voice.config.sample_rate)  # Model's sample rate (e.g., 22050 Hz)
+                # Piper writes audio directly to the WAV file
+                self.piper_voice.synthesize(text, wav_file)
+
+            # Convert to 16kHz mono WAV (matching original gTTS setup)
+            CUSTOM_LOGGER.debug("Converting WAV to 16kHz mono")
+            subprocess.run(
+                ["ffmpeg", "-i", temp_wav, "-ar", "16000", "-ac", "1", "-f", "wav", temp_wav_converted],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+
+            # Read the converted WAV data
             CUSTOM_LOGGER.debug("Reading WAV data")
-            with open(temp_wav, "rb") as f:
+            with open(temp_wav_converted, "rb") as f:
                 wav_data = f.read()
-            os.remove(temp_mp3)
+
+            # Clean up temporary files
             os.remove(temp_wav)
+            os.remove(temp_wav_converted)
             CUSTOM_LOGGER.debug("TTS audio generated successfully")
             return wav_data
+
         except Exception as e:
             CUSTOM_LOGGER.error(f"TTS generation failed: {e}")
             return None
-
+    
     def save_transcript(self, transcript: str) -> None:
         CUSTOM_LOGGER.debug("Saving transcript")
         with open("/home/fyp213/transcripts.txt", "a") as f:
