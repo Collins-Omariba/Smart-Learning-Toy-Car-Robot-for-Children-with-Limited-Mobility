@@ -11,7 +11,6 @@ import io
 import wave
 import whisper
 import google.generativeai as genai
-# from gtts import gTTS
 from piper import PiperVoice
 import os
 import json
@@ -23,7 +22,6 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from typing import Callable, Dict, Final, List, Optional, Set, Union
-from vosk import Model, KaldiRecognizer
 from dotenv import load_dotenv
 
 from pyring_buffer import RingBuffer
@@ -1602,26 +1600,6 @@ class WakeStreamingSatellite(SatelliteBase):
             CUSTOM_LOGGER.error(f"Error during TTS audio playback: {e}")
             self.set_led_color(BLUE)  # Reset LED on error
 
-    # async def generate_tts_audio(self, text: str) -> Optional[bytes]:
-    #     CUSTOM_LOGGER.debug("Generating TTS audio")
-    #     try:
-    #         tts = gTTS(text=text, lang='en', slow=False)
-    #         temp_mp3 = "temp.mp3"
-    #         temp_wav = "temp.wav"
-    #         CUSTOM_LOGGER.debug("Saving to temporary MP3")
-    #         tts.save(temp_mp3)
-    #         CUSTOM_LOGGER.debug("Converting MP3 to WAV")
-    #         subprocess.run(["ffmpeg", "-i", temp_mp3, "-ar", "16000", "-ac", "1", "-f", "wav", temp_wav], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    #         CUSTOM_LOGGER.debug("Reading WAV data")
-    #         with open(temp_wav, "rb") as f:
-    #             wav_data = f.read()
-    #         os.remove(temp_mp3)
-    #         os.remove(temp_wav)
-    #         CUSTOM_LOGGER.debug("TTS audio generated successfully")
-    #         return wav_data
-    #     except Exception as e:
-    #         CUSTOM_LOGGER.error(f"TTS generation failed: {e}")
-    #         return None
 
     async def generate_tts_audio(self, text: str) -> Optional[bytes]:
         CUSTOM_LOGGER.debug("Generating TTS audio with Piper")
@@ -1629,7 +1607,6 @@ class WakeStreamingSatellite(SatelliteBase):
         try:
             temp_wav = "temp.wav"
             temp_wav_converted = "temp_converted.wav"
-            CUSTOM_LOGGER.debug(f"Synthesizing text: {text}")
 
             # Create a WAV file with correct parameters for Piper
             import wave
@@ -1640,8 +1617,7 @@ class WakeStreamingSatellite(SatelliteBase):
                 # Piper writes audio directly to the WAV file
                 self.piper_voice.synthesize(text, wav_file)
 
-            # Convert to 16kHz mono WAV (matching original gTTS setup)
-            CUSTOM_LOGGER.debug("Converting WAV to 16kHz mono")
+         
             subprocess.run(
                 ["ffmpeg", "-i", temp_wav, "-ar", "16000", "-ac", "1", "-f", "wav", temp_wav_converted],
                 check=True,
