@@ -81,16 +81,24 @@ def index():
                 border-radius: 5px;
                 color: white;
             }
-            .manual-button, .restart-button, .logs-button {
+            .button-container {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                margin-top: 15px;
+            }
+            .manual-button, .restart-button, .logs-button, .poweroff-button {
                 color: white;
-                padding: 10px 20px;
-                font-size: 16px;
+                padding: 8px 16px;
+                font-size: 14px;
                 border: none;
                 border-radius: 5px;
                 cursor: pointer;
-                margin-top: 10px;
                 text-decoration: none;
                 display: inline-block;
+                flex: 1;
+                margin: 5px;
+                text-align: center;
             }
             .manual-button {
                 background-color: #4682b4;
@@ -106,11 +114,26 @@ def index():
             }
             .logs-button {
                 background-color: #6c757d;
-                font-size: 14px;
-                padding: 8px 16px;
             }
             .logs-button:hover {
                 background-color: #5a6268;
+            }
+            .poweroff-button {
+                background-color: #dc3545;
+            }
+            .poweroff-button:hover {
+                background-color: #c82333;
+            }
+            @media (max-width: 600px) {
+                .age-form {
+                    width: 90%;
+                }
+                .button-container {
+                    flex-direction: column;
+                }
+                .manual-button, .restart-button, .logs-button, .poweroff-button {
+                    margin: 5px 0;
+                }
             }
         </style>
     </head>
@@ -128,9 +151,12 @@ def index():
                 <input type="number" id="age" name="age" min="1" max="18" required>
                 <input type="submit" value="Set Age">
             </form>
-            <a href="/manual" class="manual-button">View User Manual</a>
-            <a href="/restart_services" class="restart-button">Restart Robot Services</a>
-            <a href="/logs" class="logs-button">View Logs</a>
+            <div class="button-container">
+                <a href="/manual" class="manual-button">View User Manual</a>
+                <a href="/restart_services" class="restart-button">Restart Robot Services</a>
+                <a href="/logs" class="logs-button">View Logs</a>
+                <a href="/poweroff" class="poweroff-button">Power Off</a>
+            </div>
         </div>
     </body>
     </html>
@@ -378,7 +404,7 @@ def logs():
                 cursor: pointer;
                 text-decoration: none;
                 display: inline-block;
-                margin-top: 20px;
+                margin-top: sides: 20px;
             }
             .back-button:hover {
                 background-color: #228b22;
@@ -407,6 +433,16 @@ def logs():
     </html>
     '''
     return render_template_string(template, log_content=log_content)
+
+@app.route('/poweroff')
+def poweroff():
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+    try:
+        subprocess.run(['sudo', 'poweroff'], check=True)
+        return redirect(url_for('index', success_message='Powering off the Raspberry Pi...'))
+    except subprocess.CalledProcessError:
+        return redirect(url_for('index', error_message='Failed to power off. Please try again or check logs.'))
 
 @app.route('/manual')
 def manual():
@@ -593,7 +629,7 @@ def manual():
             <details>
                 <summary><i class="fa-solid fa-file-audio fa-icon"></i> Offline Content</summary>
                 <ul>
-                    <li><strong>Alphabet Song</strong>: Say “Hey Jarvis, play the alphabet song” to play the ABC song, available without internet connectivity.</li>
+                    <li><strong>Alphabet Song</strong>: Say “Hey Jarvis, play the abc song” to play the ABC song, available without internet connectivity.</li>
                 </ul>
             </details>
             
