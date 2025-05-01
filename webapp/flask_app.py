@@ -1,5 +1,6 @@
 from flask import Flask, request, render_template_string, redirect, url_for, session
 import subprocess
+import os
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a secure key
@@ -80,7 +81,7 @@ def index():
                 border-radius: 5px;
                 color: white;
             }
-            .manual-button, .restart-button {
+            .manual-button, .restart-button, .logs-button {
                 color: white;
                 padding: 10px 20px;
                 font-size: 16px;
@@ -103,6 +104,14 @@ def index():
             .restart-button:hover {
                 background-color: #e07b00;
             }
+            .logs-button {
+                background-color: #6c757d;
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+            .logs-button:hover {
+                background-color: #5a6268;
+            }
         </style>
     </head>
     <body>
@@ -121,6 +130,7 @@ def index():
             </form>
             <a href="/manual" class="manual-button">View User Manual</a>
             <a href="/restart_services" class="restart-button">Restart Robot Services</a>
+            <a href="/logs" class="logs-button">View Logs</a>
         </div>
     </body>
     </html>
@@ -132,7 +142,7 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form['password'] == '1234': #Replace with a secure password
+        if request.form['password'] == 'your_secure_password':  # Replace 'your_secure_password' with a strong password
             session['logged_in'] = True
             return redirect(url_for('index'))
         return render_template_string('''
@@ -299,6 +309,105 @@ def restart_services():
     except subprocess.CalledProcessError:
         return redirect(url_for('index', error_message='Failed to restart robot services. Please try again or check logs.'))
 
+@app.route('/logs')
+def logs():
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+    log_file = '/home/fyp213/wyoming_custom.log'
+    try:
+        with open(log_file, 'r') as f:
+            # Read last 100 lines
+            lines = f.readlines()[-100:]
+            log_content = ''.join(lines)
+    except FileNotFoundError:
+        log_content = 'Error: Log file not found at /home/fyp213/wyoming_custom.log'
+    except PermissionError:
+        log_content = 'Error: Permission denied when accessing log file. Please check file permissions.'
+    except Exception as e:
+        log_content = f'Error: Failed to read log file: {str(e)}'
+    
+    template = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Smart Toy Car Robot - View Logs</title>
+        <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700&display=swap" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Baloo 2', cursive, Arial, sans-serif;
+                background-color: #f0f8ff;
+                margin: 0;
+                padding: 20px;
+            }
+            .logs-container {
+                background-color: white;
+                padding: 20px;
+                border: 2px solid #4682b4;
+                border-radius: 10px;
+                max-width: 800px;
+                margin: 0 auto;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+            h1 {
+                background: linear-gradient(to right, #ff7e5f, #feb47b);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                font-size: 24px;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            pre {
+                background-color: #f8f9fa;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                max-height: 400px;
+                overflow-y: auto;
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+            .back-button {
+                background-color: #32cd32;
+                color: white;
+                padding: 10px 20px;
+                font-size: 16px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                text-decoration: none;
+                display: inline-block;
+                margin-top: 20px;
+            }
+            .back-button:hover {
+                background-color: #228b22;
+            }
+            @media (max-width: 600px) {
+                .logs-container {
+                    padding: 15px;
+                    max-width: 100%;
+                }
+                h1 {
+                    font-size: 20px;
+                }
+                pre {
+                    font-size: 12px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="logs-container">
+            <h1>System Logs</h1>
+            <pre>{{ log_content }}</pre>
+            <a href="/" class="back-button">Back to Main Page</a>
+        </div>
+    </body>
+    </html>
+    '''
+    return render_template_string(template, log_content=log_content)
+
 @app.route('/manual')
 def manual():
     if 'logged_in' not in session:
@@ -453,7 +562,7 @@ def manual():
                     </li>
                     <li><strong>Fun Commands</strong>: Try these for entertainment:
                         <ul>
-                            <li>“Play the abc song” – Plays the ABC song (available offline).</li>
+                            <li>“Play the alphabet song” – Plays the ABC song (available offline).</li>
                             <li>“Tell a story” – Shares an interactive story.</li>
                             <li>“Sing a song” – Sings a fun tune.</li>
                         </ul>
