@@ -407,7 +407,8 @@ def manual():
                         {class: 'fa-bluetooth', emoji: '📱'},
                         {class: 'fa-book', emoji: '📚'},
                         {class: 'fa-circle-question', emoji: '❓'},
-                        {class: 'fa-shield-halved', emoji: '🛡️'}
+                        {class: 'fa-shield-halved', emoji: '🛡️'},
+                        {class: 'fa-file-audio', emoji: '🎵'}
                     ];
                     icons.forEach(icon => {
                         const elements = document.getElementsByClassName(icon.class);
@@ -446,11 +447,18 @@ def manual():
                             <li>“Move in a square” – Traces a square path.</li>
                             <li>“Move in a triangle” – Traces a triangular path.</li>
                             <li>“Move in a rectangle” – Traces a rectangular path.</li>
-                            <li>“Turn right” – Rotates right.</li>
-                            <li>“Turn left” – Rotates left.</li>
+                            <li>“Go right” – Rotates right.</li>
+                            <li>“Go left” – Rotates left.</li>
                         </ul>
                     </li>
-                    <li><strong>Other Commands</strong>: Try “Tell a story,” “What is 2 + 2?” or “Sing a song.”</li>
+                    <li><strong>Fun Commands</strong>: Try these for entertainment:
+                        <ul>
+                            <li>“Play the abc song” – Plays the ABC song (available offline).</li>
+                            <li>“Tell a story” – Shares an interactive story.</li>
+                            <li>“Sing a song” – Sings a fun tune.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Educational Commands</strong>: Try “What is 2 + 2?” for math or general knowledge.</li>
                     <li><strong>Tips</strong>: Speak clearly, 1–2 feet from the robot. Avoid loud background noise.</li>
                 </ul>
             </details>
@@ -470,6 +478,13 @@ def manual():
                     <li><strong>Quizzes</strong>: Math, spelling, or general knowledge questions tailored to the child’s age.</li>
                     <li><strong>Storytelling</strong>: Interactive stories generated based on child input.</li>
                     <li><strong>Age Customization</strong>: Set the child’s age on this web app for age-appropriate responses.</li>
+                </ul>
+            </details>
+            
+            <details>
+                <summary><i class="fa-solid fa-file-audio fa-icon"></i> Offline Content</summary>
+                <ul>
+                    <li><strong>Alphabet Song</strong>: Say “Hey Jarvis, play the alphabet song” to play the ABC song, available without internet connectivity.</li>
                 </ul>
             </details>
             
