@@ -8,8 +8,7 @@ CHECK `server+bot` branch for the code of the server + bot. This is unable to op
 
 # Installation Instructions
 
-Refer to [Wyoming Satellite](wyoming-satellite/README.md) for setup then proceed to the following steps: <br>
-- Follow [2-Microphone Setup Tutorial](wyoming-satellite/docs/tutorial_2mic.md) - > ⚠️ **Warning:** For `standalone-bot` do not setup the led service and remember to change the various paths and username accordingly. Also setup piper in the following folders as shown
+- Follow [2-Microphone Setup Tutorial](wyoming-satellite/docs/tutorial_2mic.md) except instead of cloning the `https://github.com/rhasspy/wyoming-satellite.git` clone this repo and work inside the [wyoming-satellite](wyoming-satellite) folder- > ⚠️ **Warning:** For `standalone-bot` do not setup the led service and remember to change the various paths and username accordingly. Also setup piper in the following folders as shown
 
 ```
            "/home/fyp213/piper_voices/en_US-amy-medium.onnx"
