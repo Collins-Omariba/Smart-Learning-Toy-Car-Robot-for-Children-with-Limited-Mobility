@@ -8,6 +8,8 @@
 
 Replace `fyp213` with your username in the above paths and in the relevant code in WakeStreamingSatellite class.
 
+The systemd service files used are in the [systemd service files ](<systemd service files>) folder.
+
 
 CHECK `standalone-bot` (The currently default and main version) branch for the code of the standalone bot. This is able to operate without the server
 

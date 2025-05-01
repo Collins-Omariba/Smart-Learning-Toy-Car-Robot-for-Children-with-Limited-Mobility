@@ -1,0 +1,12 @@
+[Unit]
+Description=Flask App Service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/fyp213/webapp/flask_app.py
+WorkingDirectory=/home/fyp213/webapp
+User=fyp213
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

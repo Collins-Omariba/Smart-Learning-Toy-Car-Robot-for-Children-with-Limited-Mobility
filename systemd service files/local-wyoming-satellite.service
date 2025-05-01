@@ -1,0 +1,12 @@
+[Unit]
+Description=Local Wyoming Satellite
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/fyp213/local_wyoming_satellite.py
+WorkingDirectory=/home/fyp213
+Restart=always
+User=fyp213
+
+[Install]
+WantedBy=multi-user.target

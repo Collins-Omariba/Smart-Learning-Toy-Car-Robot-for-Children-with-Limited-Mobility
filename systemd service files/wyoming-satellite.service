@@ -1,0 +1,25 @@
+[Unit]
+Description=Wyoming Satellite (Local)
+Wants=network-online.target
+After=network-online.target
+Requires=wyoming-openwakeword.service
+
+
+[Service]
+Type=simple
+ExecStart=/home/fyp213/wyoming-satellite/script/run \
+    --debug \
+    --name 'Bob' \
+    --uri 'tcp://0.0.0.0:10700' \
+    --mic-command 'arecord -D plughw:CARD=seeed2micvoicec,DEV=0 -r 16000 -c 1 -f S16_LE -t raw' \
+    --snd-command 'aplay -D plughw:CARD=seeed2micvoicec,DEV=0 -r 16000 -c 1 -f S16_LE -t raw' \
+    --snd-command-rate 16000 \
+    --mic-auto-gain 5 \
+    --mic-noise-suppression 2 \
+    --wake-uri 'tcp://127.0.0.1:10400' \
+    --wake-word-name 'hey_jarvis' \
+    --awake-wav '/home/fyp213/wyoming-satellite/sounds/awake.wav' \
+    --done-wav '/home/fyp213/wyoming-satellite/sounds/done.wav'
+WorkingDirectory=/home/fyp213/wyoming-satellite
+Restart=always
+RestartSec=1

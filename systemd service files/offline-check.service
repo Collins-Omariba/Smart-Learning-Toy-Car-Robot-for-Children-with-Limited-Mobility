@@ -1,0 +1,13 @@
+[Unit]
+Description=Play offline sound if not connected to WiFi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/fyp213/wifi_alert/offline_check.py
+Restart=on-failure
+User=fyp213
+WorkingDirectory=/home/fyp213/wifi_alert
+
+[Install]
+WantedBy=multi-user.target
