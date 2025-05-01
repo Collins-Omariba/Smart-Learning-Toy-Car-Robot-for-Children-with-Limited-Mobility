@@ -562,7 +562,7 @@ def manual():
                     </li>
                     <li><strong>Fun Commands</strong>: Try these for entertainment:
                         <ul>
-                            <li>“Play the alphabet song” – Plays the ABC song (available offline).</li>
+                            <li>“Play the abc song” – Plays the ABC song (available offline).</li>
                             <li>“Tell a story” – Shares an interactive story.</li>
                             <li>“Sing a song” – Sings a fun tune.</li>
                         </ul>
