@@ -23,6 +23,11 @@ CHECK `server+bot` branch for the code of the server + bot. This is unable to op
 
 - The systemd service files used are in the [systemd service files ](<systemd service files>) folder.
 
+- create a .env file in the `wyoming-satellite` folder and add the following lines to it:
+
+```
+GEMINI_API_KEY=your_gemini_api_key
+```
 - Check out the [requirements.txt](wyoming-satellite/requirements.txt) for the required packages if you encounter any issues related to new features added to wyoming satellite. Install the packages after activating the virtual environment in the `wyoming-satellite` folder.
 
 - The code in the [ros_arduino_bridge](ros_arduino_bridge) folder is to be compiled and uploaded to an arduino mega connected to the pi in order for it to receive commands from the pi and control the motors.
