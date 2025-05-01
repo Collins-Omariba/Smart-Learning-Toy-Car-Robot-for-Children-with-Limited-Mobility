@@ -13,7 +13,7 @@ def index():
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" id="font-awesome-css">
         <style>
             body {
-                font-family: 'Baloo 2', cursive;
+                font-family: 'Baloo 2', cursive, Arial, sans-serif;
                 background-color: #f0f8ff;
                 display: flex;
                 justify-content: center;
@@ -139,7 +139,7 @@ def manual():
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" id="font-awesome-css">
         <style>
             body {
-                font-family: 'Baloo 2', cursive;
+                font-family: 'Baloo 2', cursive, Arial, sans-serif;
                 background-color: #f0f8ff;
                 margin: 0;
                 padding: 20px;
@@ -266,7 +266,18 @@ def manual():
                 <summary><i class="fa-solid fa-microphone fa-icon"></i> Voice Interaction</summary>
                 <ul>
                     <li><strong>Wake Word</strong>: Say “Hey Jarvis” to activate (LEDs turn green).</li>
-                    <li><strong>Commands</strong>: Try “Move forward,” “Tell a story,” or “What is 2 + 2?”</li>
+                    <li><strong>Movement Commands</strong>: Use these to control the robot:
+                        <ul>
+                            <li>“Move forward” – Moves straight ahead.</li>
+                            <li>“Move backwards” – Moves straight back.</li>
+                            <li>“Move in a square” – Traces a square path.</li>
+                            <li>“Move in a triangle” – Traces a triangular path.</li>
+                            <li>“Move in a rectangle” – Traces a rectangular path.</li>
+                            <li>“Go right” – Rotates right.</li>
+                            <li>“Go left” – Rotates left.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Other Commands</strong>: Try “Tell a story,” “What is 2 + 2?” or “Sing a song.”</li>
                     <li><strong>Tips</strong>: Speak clearly, 1–2 feet from the robot. Avoid loud background noise.</li>
                 </ul>
             </details>
@@ -274,7 +285,7 @@ def manual():
             <details>
                 <summary><i class="fa-solid fa-bluetooth fa-icon"></i> Bluetooth App</summary>
                 <ul>
-                    <li><strong>Connect</strong>: Open the app, pair with “TEAM TWO WHEEL” on your Android device.</li>
+                    <li><strong>Connect</strong>: Open the app, pair with “HC-05” on your Android device.</li>
                     <li><strong>Controls</strong>: Use buttons for movement (forward, backward, left, right, stop) or educational modes (quizzes, storytelling).</li>
                     <li><strong>Range</strong>: Works within 10 meters; ensure no obstacles.</li>
                 </ul>
@@ -294,7 +305,7 @@ def manual():
                 <ul>
                     <li><strong>No Response</strong>: Ensure the robot is powered on and Wi-Fi is connected. Repeat the wake word clearly.</li>
                     <li><strong>Motor Stalls</strong>: Check for obstacles; restart the robot if needed.</li>
-                    <li><strong>Bluetooth Issues</strong>: Re-pair the app with TEAM TWO WHEEL; ensure the phone is within range.</li>
+                    <li><strong>Bluetooth Issues</strong>: Re-pair the app with HC-05; ensure the phone is within range.</li>
                 </ul>
             </details>
             
@@ -310,7 +321,7 @@ def manual():
             <a href="/" class="back-button">Back to Age Input</a>
         </div>
     </body>
-    </html> 
+    </html>
     '''
     return render_template_string(template)
 
