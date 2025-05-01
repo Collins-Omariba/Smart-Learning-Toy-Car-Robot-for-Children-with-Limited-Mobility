@@ -4,90 +4,114 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    # HTML template with embedded CSS for a child-friendly design
     template = '''
-    <style>
-        body {
-            font-family: 'Baloo 2', cursive;
-            background-color: #f0f8ff; /* Light blue background */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .age-form {
-            background-color: white;
-            padding: 20px;
-            border: 2px solid #4682b4; /* Blue border */
-            border-radius: 10px;
-            width: 300px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Subtle shadow */
-        }
-        h1 {
-            background: linear-gradient(to right, #ff7e5f, #feb47b); /* Gradient text */
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 10px;
-            font-size: 18px;
-            color: #333;
-        }
-        input[type="number"] {
-            padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            width: 100px;
-        }
-        input[type="submit"] {
-            background-color: #32cd32; /* Bright green button */
-            color: white;
-            padding: 10px 20px;
-            font-size: 18px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        input[type="submit"]:hover {
-            background-color: #228b22; /* Darker green on hover */
-        }
-        .success {
-            background-color: #90ee90; /* Light green for success */
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-        }
-        .error {
-            background-color: #ff6347; /* Tomato red for errors */
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            color: white;
-        }
-    </style>
-    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700&display=swap" rel="stylesheet">
-    <div class="age-form">
-        <h1>Set the Child's Age</h1>
-        {% if success_message %}
-        <div class="success">{{ success_message }}</div>
-        {% endif %}
-        {% if error_message %}
-        <div class="error">{{ error_message }}</div>
-        {% endif %}
-        <form method="post" action="/set_age">
-            <label for="age">Enter child's age:</label>
-            <input type="number" id="age" name="age" min="1" max="18" required>
-            <input type="submit" value="Set Age">
-        </form>
-    </div>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Smart Toy Car Robot - Set Age</title>
+        <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" id="font-awesome-css">
+        <style>
+            body {
+                font-family: 'Baloo 2', cursive;
+                background-color: #f0f8ff;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+            }
+            .age-form {
+                background-color: white;
+                padding: 20px;
+                border: 2px solid #4682b4;
+                border-radius: 10px;
+                width: 300px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                text-align: center;
+            }
+            h1 {
+                background: linear-gradient(to right, #ff7e5f, #feb47b);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                font-size: 24px;
+                margin-bottom: 20px;
+            }
+            label {
+                display: block;
+                margin-bottom: 10px;
+                font-size: 18px;
+                color: #333;
+            }
+            input[type="number"] {
+                padding: 10px;
+                font-size: 16px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                width: 100px;
+            }
+            input[type="submit"] {
+                background-color: #32cd32;
+                color: white;
+                padding: 10px 20px;
+                font-size: 18px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 10px;
+            }
+            input[type="submit"]:hover {
+                background-color: #228b22;
+            }
+            .success {
+                background-color: #90ee90;
+                padding: 10px;
+                margin-bottom: 20px;
+                border-radius: 5px;
+            }
+            .error {
+                background-color: #ff6347;
+                padding: 10px;
+                margin-bottom: 20px;
+                border-radius: 5px;
+                color: white;
+            }
+            .manual-button {
+                background-color: #4682b4;
+                color: white;
+                padding: 10px 20px;
+                font-size: 16px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 15px;
+                text-decoration: none;
+                display: inline-block;
+            }
+            .manual-button:hover {
+                background-color: #3a5f8a;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="age-form">
+            <h1>Set the Child's Age</h1>
+            {% if success_message %}
+            <div class="success">{{ success_message }}</div>
+            {% endif %}
+            {% if error_message %}
+            <div class="error">{{ error_message }}</div>
+            {% endif %}
+            <form method="post" action="/set_age">
+                <label for="age">Enter child's age:</label>
+                <input type="number" id="age" name="age" min="1" max="18" required>
+                <input type="submit" value="Set Age">
+            </form>
+            <a href="/manual" class="manual-button">View User Manual</a>
+        </div>
+    </body>
+    </html>
     '''
-    # Handle success or error messages from query parameters
     success_message = "Age has been set successfully!" if request.args.get('success') else ""
     error_message = "Invalid age. Please enter a number between 1 and 18." if request.args.get('error') == 'invalid_age' else ""
     return render_template_string(template, success_message=success_message, error_message=error_message)
@@ -103,6 +127,192 @@ def set_age():
         return redirect(url_for('index', success=1))
     except ValueError:
         return redirect(url_for('index', error='invalid_age'))
+
+@app.route('/manual')
+def manual():
+    template = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Smart Toy Car Robot - User Manual</title>
+        <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" id="font-awesome-css">
+        <style>
+            body {
+                font-family: 'Baloo 2', cursive;
+                background-color: #f0f8ff;
+                margin: 0;
+                padding: 20px;
+            }
+            .manual-container {
+                background-color: white;
+                padding: 30px;
+                border: 2px solid #4682b4;
+                border-radius: 10px;
+                max-width: 600px;
+                margin: 0 auto;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+            h1 {
+                background: linear-gradient(to right, #ff7e5f, #feb47b);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                font-size: 28px;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            p, li {
+                color: #333;
+                font-size: 16px;
+                line-height: 1.5;
+            }
+            details {
+                margin-bottom: 15px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                background-color: #f9f9f9;
+            }
+            summary {
+                cursor: pointer;
+                font-weight: bold;
+                color: #4682b4;
+                font-size: 18px;
+            }
+            details[open] summary {
+                color: #32cd32;
+            }
+            .fa-icon, .emoji-icon {
+                margin-right: 10px;
+                color: #4682b4;
+                display: inline-block;
+                width: 20px;
+                text-align: center;
+            }
+            details[open] .fa-icon, details[open] .emoji-icon {
+                color: #32cd32;
+            }
+            .emoji-icon {
+                font-size: 18px;
+            }
+            .back-button {
+                background-color: #32cd32;
+                color: white;
+                padding: 10px 20px;
+                font-size: 16px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                text-decoration: none;
+                display: inline-block;
+                margin-top: 20px;
+            }
+            .back-button:hover {
+                background-color: #228b22;
+            }
+            @media (max-width: 600px) {
+                .manual-container {
+                    padding: 20px;
+                    max-width: 100%;
+                }
+                h1 {
+                    font-size: 24px;
+                }
+                summary {
+                    font-size: 16px;
+                }
+            }
+        </style>
+        <script>
+            // Fallback to emojis if Font Awesome fails to load
+            window.onload = function() {
+                const fontAwesomeLink = document.getElementById('font-awesome-css');
+                if (!fontAwesomeLink.sheet) {
+                    const icons = [
+                        {class: 'fa-power-off', emoji: '⚡'},
+                        {class: 'fa-microphone', emoji: '🎤'},
+                        {class: 'fa-bluetooth', emoji: '📱'},
+                        {class: 'fa-book', emoji: '📚'},
+                        {class: 'fa-circle-question', emoji: '❓'},
+                        {class: 'fa-shield-halved', emoji: '🛡️'}
+                    ];
+                    icons.forEach(icon => {
+                        const elements = document.getElementsByClassName(icon.class);
+                        for (let el of elements) {
+                            el.classList.remove('fa-icon', 'fa-solid', icon.class);
+                            el.classList.add('emoji-icon');
+                            el.textContent = icon.emoji;
+                        }
+                    });
+                }
+            };
+        </script>
+    </head>
+    <body>
+        <div class="manual-container">
+            <h1>User Manual: Smart Toy Car Robot</h1>
+            <p>Welcome to the Smart Toy Car Robot! This guide helps you and your child enjoy its fun and educational features.</p>
+            
+            <details>
+                <summary><i class="fa-solid fa-power-off fa-icon"></i> Getting Started</summary>
+                <ul>
+                    <li><strong>Power On/Off</strong>: Press the DPST rocker switch to turn the robot on (LEDs turn blue). Press again to turn off.</li>
+                    <li><strong>Wi-Fi Check</strong>: The robot alerts you if no Wi-Fi is detected (needed for Gemini responses).</li>
+                    <li><strong>Charging</strong>: Use the provided charger for the Li-ion battery pack (≈2 hours for a full charge).</li>
+                </ul>
+            </details>
+            
+            <details>
+                <summary><i class="fa-solid fa-microphone fa-icon"></i> Voice Interaction</summary>
+                <ul>
+                    <li><strong>Wake Word</strong>: Say “Hey Jarvis” to activate (LEDs turn green).</li>
+                    <li><strong>Commands</strong>: Try “Move forward,” “Tell a story,” or “What is 2 + 2?”</li>
+                    <li><strong>Tips</strong>: Speak clearly, 1–2 feet from the robot. Avoid loud background noise.</li>
+                </ul>
+            </details>
+            
+            <details>
+                <summary><i class="fa-solid fa-bluetooth fa-icon"></i> Bluetooth App</summary>
+                <ul>
+                    <li><strong>Connect</strong>: Open the app, pair with “TEAM TWO WHEEL” on your Android device.</li>
+                    <li><strong>Controls</strong>: Use buttons for movement (forward, backward, left, right, stop) or educational modes (quizzes, storytelling).</li>
+                    <li><strong>Range</strong>: Works within 10 meters; ensure no obstacles.</li>
+                </ul>
+            </details>
+            
+            <details>
+                <summary><i class="fa-solid fa-book fa-icon"></i> Educational Features</summary>
+                <ul>
+                    <li><strong>Quizzes</strong>: Math, spelling, or general knowledge questions tailored to the child’s age.</li>
+                    <li><strong>Storytelling</strong>: Interactive stories generated based on child input.</li>
+                    <li><strong>Age Customization</strong>: Set the child’s age on this web app for age-appropriate responses.</li>
+                </ul>
+            </details>
+            
+            <details>
+                <summary><i class="fa-solid fa-circle-question fa-icon"></i> Troubleshooting</summary>
+                <ul>
+                    <li><strong>No Response</strong>: Ensure the robot is powered on and Wi-Fi is connected. Repeat the wake word clearly.</li>
+                    <li><strong>Motor Stalls</strong>: Check for obstacles; restart the robot if needed.</li>
+                    <li><strong>Bluetooth Issues</strong>: Re-pair the app with TEAM TWO WHEEL; ensure the phone is within range.</li>
+                </ul>
+            </details>
+            
+            <details>
+                <summary><i class="fa-solid fa-shield-halved fa-icon"></i> Safety Tips</summary>
+                <ul>
+                    <li><strong>Supervision</strong>: Always supervise children under 5 during use.</li>
+                    <li><strong>Environment</strong>: Avoid water, extreme heat, or rough surfaces.</li>
+                    <li><strong>Maintenance</strong>: Do not open the robot; contact support for repairs.</li>
+                </ul>
+            </details>
+            
+            <a href="/" class="back-button">Back to Age Input</a>
+        </div>
+    </body>
+    </html> 
+    '''
+    return render_template_string(template)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
