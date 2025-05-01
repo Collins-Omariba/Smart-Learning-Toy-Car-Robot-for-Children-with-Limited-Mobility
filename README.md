@@ -25,6 +25,7 @@ CHECK `server+bot` branch for the code of the server + bot. This is unable to op
 
 - Check out the [requirements.txt](wyoming-satellite/requirements.txt) for the required packages if you encounter any issues related to new features added to wyoming satellite. Install the packages after activating the virtual environment in the `wyoming-satellite` folder.
 
+- The code in the [ros_arduino_bridge](ros_arduino_bridge) folder is to be compiled and uploaded to an arduino mega connected to the pi in order for it to receive commands from the pi and control the motors.
 
 
  
@@ -117,7 +118,7 @@ The original `WakeStreamingSatellite` class relied heavily on server-based proce
 
 ### 13. Integration with Flask Web App  
 - **Original**: No external data integration.  
-- **Modification**: Reads age file updated by Flask web app( `webapp/flask_app.py` ) for dynamic interaction.
+- **Modification**: Reads age file updated by Flask web app( `webapp/flask_app.py` ) for dynamic interaction. Also has a user manual, a restart robot button, a power off button and a view logs button.
 
 ---
 
@@ -226,10 +227,11 @@ The LEDs provide intuitive visual feedback:
 
 These changes make the toy:
 
-- **Fully stanalone**  
+- **Fully standalone**  
 - **Age-aware and educational**  
 - **Engaging through lights and motion**  
 - **Naturally conversational**
-- **Can give feedback if there is no wifi connection**
+- **Can give feedback if there is no wifi connection and also has offline playback content**
+- **Have a great user interface via the flask web app**
 
 
