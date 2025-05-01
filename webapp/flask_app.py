@@ -142,7 +142,7 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form['password'] == 'your_secure_password':  # Replace 'your_secure_password' with a strong password
+        if request.form['password'] == '1234':  # Replace with a strong password
             session['logged_in'] = True
             return redirect(url_for('index'))
         return render_template_string('''
