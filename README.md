@@ -1,19 +1,27 @@
 # FINAL-YEAR-PROJECT-CODE
-[2-Microphone Setup Tutorial](wyoming-satellite/docs/tutorial_2mic.md) - > ⚠️ **Warning:** For `standalone-bot` do not setup the led service and remember to change the various paths and username accordingly. Also setup piper in the following folders as shown
+
+#### The main code in this project is in the `wyoming-satellite` folder and is a modified version of https://github.com/rhasspy/wyoming-satellite. Read below for more information on the modifications made to the code. Refer to the original repository for more information on the original code.
+
+CHECK `standalone-bot` (The currently default and main version) branch for the code of the standalone bot also available in `main` branch. This is able to operate without the server
+
+CHECK `server+bot` branch for the code of the server + bot. This is unable to operate without the server
+
+# Installation Instructions
+
+Refer to [Wyoming Satellite](wyoming-satellite/README.md) for setup then proceed to the following steps: <br>
+- Follow [2-Microphone Setup Tutorial](wyoming-satellite/docs/tutorial_2mic.md) - > ⚠️ **Warning:** For `standalone-bot` do not setup the led service and remember to change the various paths and username accordingly. Also setup piper in the following folders as shown
 
 ```
            "/home/fyp213/piper_voices/en_US-amy-medium.onnx"
            "/home/fyp213/piper_voices/en_US-amy-medium.onnx.json"
 ```
 
-Replace `fyp213` with your username in the above paths and in the relevant code in WakeStreamingSatellite class.
+- Replace `fyp213` with your username in the above paths and in the relevant code in WakeStreamingSatellite class.
 
-The systemd service files used are in the [systemd service files ](<systemd service files>) folder.
+- The systemd service files used are in the [systemd service files ](<systemd service files>) folder.
 
+- Check out the [requirements.txt](wyoming-satellite/requirements.txt) for the required packages if you encounter any issues related to new features added to wyoming satellite. Install the packages after activating the virtual environment in the `wyoming-satellite` folder.
 
-CHECK `standalone-bot` (The currently default and main version) branch for the code of the standalone bot. This is able to operate without the server
-
-CHECK `server+bot` branch for the code of the server + bot. This is unable to operate without the server
 
 
  
