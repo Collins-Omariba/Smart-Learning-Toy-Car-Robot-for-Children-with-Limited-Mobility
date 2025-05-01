@@ -4,7 +4,7 @@
 
 CHECK `standalone-bot` (The currently default and main version) branch for the code of the standalone bot also available in `main` branch. This is able to operate without the server
 
-CHECK `server+bot` branch for the code of the server + bot. This is unable to operate without the server
+CHECK `server+bot` branch for the code of the server + bot. This is unable to operate without the server and is not being updated anymore. It is only here for reference and to show the original code.
 
 # Installation Instructions
 
