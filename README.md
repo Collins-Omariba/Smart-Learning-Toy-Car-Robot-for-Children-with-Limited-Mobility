@@ -8,7 +8,11 @@ CHECK `server+bot` branch for the code of the server + bot. This is unable to op
 
 # Installation Instructions
 
-- Follow [2-Microphone Setup Tutorial](wyoming-satellite/docs/tutorial_2mic.md) except instead of cloning the `https://github.com/rhasspy/wyoming-satellite.git` clone this repo and work inside the [wyoming-satellite](wyoming-satellite) folder- > ⚠️ **Warning:** For `standalone-bot` do not setup the led service and remember to change the various paths and username accordingly. Also setup piper in the following folders as shown
+- Follow [2-Microphone Setup Tutorial](wyoming-satellite/docs/tutorial_2mic.md) except instead of cloning the `https://github.com/rhasspy/wyoming-satellite.git` repo, clone this repo and work inside the [wyoming-satellite](wyoming-satellite) folder , also there is no need to clone wyoming-openwakeword from `https://github.com/rhasspy/wyoming-openwakeword.git` since it is already included in this repo. For these two just install the system dependencies as described in [2-Microphone Setup Tutorial](wyoming-satellite/docs/tutorial_2mic.md).
+
+⚠️ **Warning:** For `standalone-bot` do not setup the led service and remember to change the various paths and usernames accordingly. 
+
+- Setup piper in the following folders as shown
 
 ```
            "/home/fyp213/piper_voices/en_US-amy-medium.onnx"
