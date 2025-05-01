@@ -1,9 +1,13 @@
-from flask import Flask, request, render_template_string, redirect, url_for
+from flask import Flask, request, render_template_string, redirect, url_for, session
+import subprocess
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # Replace with a secure key
 
 @app.route('/')
 def index():
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
     template = '''
     <!DOCTYPE html>
     <html>
@@ -76,20 +80,28 @@ def index():
                 border-radius: 5px;
                 color: white;
             }
-            .manual-button {
-                background-color: #4682b4;
+            .manual-button, .restart-button {
                 color: white;
                 padding: 10px 20px;
                 font-size: 16px;
                 border: none;
                 border-radius: 5px;
                 cursor: pointer;
-                margin-top: 15px;
+                margin-top: 10px;
                 text-decoration: none;
                 display: inline-block;
             }
+            .manual-button {
+                background-color: #4682b4;
+            }
             .manual-button:hover {
                 background-color: #3a5f8a;
+            }
+            .restart-button {
+                background-color: #ff8c00;
+            }
+            .restart-button:hover {
+                background-color: #e07b00;
             }
         </style>
     </head>
@@ -108,28 +120,189 @@ def index():
                 <input type="submit" value="Set Age">
             </form>
             <a href="/manual" class="manual-button">View User Manual</a>
+            <a href="/restart_services" class="restart-button">Restart Robot Services</a>
         </div>
     </body>
     </html>
     '''
-    success_message = "Age has been set successfully!" if request.args.get('success') else ""
-    error_message = "Invalid age. Please enter a number between 1 and 18." if request.args.get('error') == 'invalid_age' else ""
+    success_message = request.args.get('success_message', '')
+    error_message = request.args.get('error_message', '')
     return render_template_string(template, success_message=success_message, error_message=error_message)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        if request.form['password'] == '1234': #Replace with a secure password
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+        return render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Login</title>
+                <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700&display=swap" rel="stylesheet">
+                <style>
+                    body {
+                        font-family: 'Baloo 2', cursive, Arial, sans-serif;
+                        background-color: #f0f8ff;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                    }
+                    .login-form {
+                        background-color: white;
+                        padding: 20px;
+                        border: 2px solid #4682b4;
+                        border-radius: 10px;
+                        width: 300px;
+                        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                        text-align: center;
+                    }
+                    h1 {
+                        background: linear-gradient(to right, #ff7e5f, #feb47b);
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        font-size: 24px;
+                        margin-bottom: 20px;
+                    }
+                    input[type="password"] {
+                        padding: 10px;
+                        font-size: 16px;
+                        border: 1px solid #ccc;
+                        border-radius: 5px;
+                        width: 200px;
+                        margin-bottom: 10px;
+                    }
+                    input[type="submit"] {
+                        background-color: #32cd32;
+                        color: white;
+                        padding: 10px 20px;
+                        font-size: 18px;
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
+                    }
+                    input[type="submit"]:hover {
+                        background-color: #228b22;
+                    }
+                    .error {
+                        background-color: #ff6347;
+                        padding: 10px;
+                        margin-bottom: 20px;
+                        border-radius: 5px;
+                        color: white;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="login-form">
+                    <h1>Login</h1>
+                    <div class="error">Invalid password</div>
+                    <form method="post">
+                        <input type="password" name="password" placeholder="Enter password" required>
+                        <input type="submit" value="Login">
+                    </form>
+                </div>
+            </body>
+            </html>
+        ''')
+    return render_template_string('''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Login</title>
+            <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700&display=swap" rel="stylesheet">
+            <style>
+                body {
+                    font-family: 'Baloo 2', cursive, Arial, sans-serif;
+                    background-color: #f0f8ff;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                }
+                .login-form {
+                    background-color: white;
+                    padding: 20px;
+                    border: 2px solid #4682b4;
+                    border-radius: 10px;
+                    width: 300px;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                    text-align: center;
+                }
+                h1 {
+                    background: linear-gradient(to right, #ff7e5f, #feb47b);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    font-size: 24px;
+                    margin-bottom: 20px;
+                }
+                input[type="password"] {
+                    padding: 10px;
+                    font-size: 16px;
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                    width: 200px;
+                    margin-bottom: 10px;
+                }
+                input[type="submit"] {
+                    background-color: #32cd32;
+                    color: white;
+                    padding: 10px 20px;
+                    font-size: 18px;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                }
+                input[type="submit"]:hover {
+                    background-color: #228b22;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="login-form">
+                <h1>Login</h1>
+                <form method="post">
+                    <input type="password" name="password" placeholder="Enter password" required>
+                    <input type="submit" value="Login">
+                </form>
+            </div>
+        </body>
+        </html>
+    ''')
 
 @app.route('/set_age', methods=['POST'])
 def set_age():
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
     try:
         age = int(request.form['age'])
         if age < 1 or age > 18:
-            return redirect(url_for('index', error='invalid_age'))
+            return redirect(url_for('index', error_message='Invalid age. Please enter a number between 1 and 18.'))
         with open('/home/fyp213/age.txt', 'w') as f:
             f.write(str(age))
-        return redirect(url_for('index', success=1))
+        return redirect(url_for('index', success_message='Age has been set successfully!'))
     except ValueError:
-        return redirect(url_for('index', error='invalid_age'))
+        return redirect(url_for('index', error_message='Invalid age. Please enter a number between 1 and 18.'))
+
+@app.route('/restart_services')
+def restart_services():
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+    try:
+        subprocess.run(['sudo', 'systemctl', 'daemon-reload'], check=True)
+        subprocess.run(['sudo', 'systemctl', 'restart', 'wyoming-satellite.service'], check=True)
+        return redirect(url_for('index', success_message='Robot services restarted successfully!'))
+    except subprocess.CalledProcessError:
+        return redirect(url_for('index', error_message='Failed to restart robot services. Please try again or check logs.'))
 
 @app.route('/manual')
 def manual():
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
     template = '''
     <!DOCTYPE html>
     <html>
@@ -270,11 +443,12 @@ def manual():
                         <ul>
                             <li>“Move forward” – Moves straight ahead.</li>
                             <li>“Move backwards” – Moves straight back.</li>
+                            <li>“Move in a circle” – Rotates in a circular path.</li>
                             <li>“Move in a square” – Traces a square path.</li>
                             <li>“Move in a triangle” – Traces a triangular path.</li>
                             <li>“Move in a rectangle” – Traces a rectangular path.</li>
-                            <li>“Go right” – Rotates right.</li>
-                            <li>“Go left” – Rotates left.</li>
+                            <li>“Turn right” – Rotates right.</li>
+                            <li>“Turn left” – Rotates left.</li>
                         </ul>
                     </li>
                     <li><strong>Other Commands</strong>: Try “Tell a story,” “What is 2 + 2?” or “Sing a song.”</li>
@@ -303,7 +477,7 @@ def manual():
             <details>
                 <summary><i class="fa-solid fa-circle-question fa-icon"></i> Troubleshooting</summary>
                 <ul>
-                    <li><strong>No Response</strong>: Ensure the robot is powered on and Wi-Fi is connected. Repeat the wake word clearly.</li>
+                    <li><strong>No Response</strong>: Ensure the robot is powered on and Wi-Fi is connected. Repeat the wake word clearly. Try restarting services using the “Restart Robot Services” button on the main page.</li>
                     <li><strong>Motor Stalls</strong>: Check for obstacles; restart the robot if needed.</li>
                     <li><strong>Bluetooth Issues</strong>: Re-pair the app with HC-05; ensure the phone is within range.</li>
                 </ul>
