@@ -443,7 +443,6 @@ def manual():
                         <ul>
                             <li>“Move forward” – Moves straight ahead.</li>
                             <li>“Move backwards” – Moves straight back.</li>
-                            <li>“Move in a circle” – Rotates in a circular path.</li>
                             <li>“Move in a square” – Traces a square path.</li>
                             <li>“Move in a triangle” – Traces a triangular path.</li>
                             <li>“Move in a rectangle” – Traces a rectangular path.</li>
@@ -459,7 +458,7 @@ def manual():
             <details>
                 <summary><i class="fa-solid fa-bluetooth fa-icon"></i> Bluetooth App</summary>
                 <ul>
-                    <li><strong>Connect</strong>: Open the app, pair with “HC-05” on your Android device.</li>
+                    <li><strong>Connect</strong>: Open the app, pair with “TEAM TWO WHEEL” on your Android device.</li>
                     <li><strong>Controls</strong>: Use buttons for movement (forward, backward, left, right, stop) or educational modes (quizzes, storytelling).</li>
                     <li><strong>Range</strong>: Works within 10 meters; ensure no obstacles.</li>
                 </ul>
@@ -479,7 +478,7 @@ def manual():
                 <ul>
                     <li><strong>No Response</strong>: Ensure the robot is powered on and Wi-Fi is connected. Repeat the wake word clearly. Try restarting services using the “Restart Robot Services” button on the main page.</li>
                     <li><strong>Motor Stalls</strong>: Check for obstacles; restart the robot if needed.</li>
-                    <li><strong>Bluetooth Issues</strong>: Re-pair the app with HC-05; ensure the phone is within range.</li>
+                    <li><strong>Bluetooth Issues</strong>: Re-pair the app with TEAM TWO WHEEL; ensure the phone is within range.</li>
                 </ul>
             </details>
             
