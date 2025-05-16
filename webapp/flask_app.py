@@ -148,7 +148,7 @@ def index():
             {% endif %}
             <form method="post" action="/set_age">
                 <label for="age">Enter child's age:</label>
-                <input type="number" id="age" name="age" min="1" max="18" required>
+                <input type="number" id="age" name="age" min="4" max="12" required>
                 <input type="submit" value="Set Age">
             </form>
             <div class="button-container">
@@ -316,13 +316,13 @@ def set_age():
         return redirect(url_for('login'))
     try:
         age = int(request.form['age'])
-        if age < 1 or age > 18:
-            return redirect(url_for('index', error_message='Invalid age. Please enter a number between 1 and 18.'))
+        if age < 4 or age > 12:
+            return redirect(url_for('index', error_message='Invalid age. Please enter a number between 4 and 12.'))
         with open('/home/fyp213/age.txt', 'w') as f:
             f.write(str(age))
         return redirect(url_for('index', success_message='Age has been set successfully!'))
     except ValueError:
-        return redirect(url_for('index', error_message='Invalid age. Please enter a number between 1 and 18.'))
+        return redirect(url_for('index', error_message='Invalid age. Please enter a number between 4 and 12.'))
 
 @app.route('/restart_services')
 def restart_services():
@@ -589,9 +589,9 @@ def manual():
                         <ul>
                             <li>“Move forward” – Moves straight ahead.</li>
                             <li>“Move backwards” – Moves straight back.</li>
-                            <li>“Move in a square” – Traces a square path.</li>
-                            <li>“Move in a triangle” – Traces a triangular path.</li>
-                            <li>“Move in a rectangle” – Traces a rectangular path.</li>
+                            <li>“Draw a square” – Traces a square path.</li>
+                            <li>“Draw a triangle” – Traces a triangular path.</li>
+                            <li>“Draw a rectangle” – Traces a rectangular path.</li>
                             <li>“Go right” – Rotates right.</li>
                             <li>“Go left” – Rotates left.</li>
                         </ul>
