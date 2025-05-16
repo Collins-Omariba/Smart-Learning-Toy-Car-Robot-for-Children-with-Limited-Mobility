@@ -19,7 +19,7 @@ SIDES          = 3
 STRAIGHT_TIMES = [4.0, 4.0, 4.0]
 
 # List of durations for each 120° turn (tune to match robot's turning speed)
-TURN_TIMES     = [4.0, 4.0, 4.0]
+TURN_TIMES     = [3.0, 3.0, 3.0]
 
 # -----------------------------------------------------------------------------
 # LOGGING SETUP

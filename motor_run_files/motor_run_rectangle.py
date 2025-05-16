@@ -16,10 +16,10 @@ TURN_SPEED     = 44
 SIDES          = 4 
 
 # List of durations for straight movements (seconds per side)
-STRAIGHT_TIMES = [2.5, 4.0, 2.5, 4.0]
+STRAIGHT_TIMES = [3.5, 5.0, 3.5, 5.0]
 
 # List of durations for each 90° turn (seconds per turn)
-TURN_TIMES     = [3.0, 3.0, 3.0, 3.0]
+TURN_TIMES     = [2.5, 2.3, 2.3, 2.3]
 
 # -----------------------------------------------------------------------------
 # LOGGING SETUP

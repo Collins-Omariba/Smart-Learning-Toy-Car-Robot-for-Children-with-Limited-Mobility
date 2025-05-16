@@ -19,7 +19,7 @@ SIDES          = 4
 STRAIGHT_TIMES = [4.0, 4.0, 4.0, 4.0]
 
 # List of durations for each 90° turn (seconds per turn)
-TURN_TIMES     = [3.0, 3.0, 3.0, 3.0]
+TURN_TIMES     = [2.5, 2.3, 2.3, 2.3]
 
 # -----------------------------------------------------------------------------
 # LOGGING SETUP
