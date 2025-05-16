@@ -343,7 +343,7 @@ def logs():
     try:
         with open(log_file, 'r') as f:
             # Read last 100 lines
-            lines = f.readlines()[-100:]
+            lines = f.readlines()[-10:]
             log_content = ''.join(lines)
     except FileNotFoundError:
         log_content = 'Error: Log file not found at /home/fyp213/wyoming_custom.log'
@@ -599,8 +599,14 @@ def manual():
                     <li><strong>Fun Commands</strong>: Try these for entertainment:
                         <ul>
                             <li>“Play the abc song” – Plays the ABC song (available offline).</li>
+                            <li>“Play the animal song” – Plays "Old Macdonald had a farm" (available offline).</li>
+                            <li>“Play the twinkle twinkle song” – Plays "Twinkle Twinkle Little Star" (available offline).</li>
+                            <li>“Play the round and round song” – Plays "Wheels on the Bus" (available offline).</li>
+
                             <li>“Tell a story” – Shares an interactive story.</li>
-                            <li>“Sing a song” – Sings a fun tune.</li>
+                            <li>“Tell a joke” – Tells a joke.</li>
+                            <li>“Recite a poem” – Recites a poem.</li>
+
                         </ul>
                     </li>
                     <li><strong>Educational Commands</strong>: Try “What is 2 + 2?” for math or general knowledge.</li>
@@ -631,6 +637,15 @@ def manual():
                 <ul>
                     <li><strong>Alphabet Song</strong>: Say “Hey Jarvis, play the abc song” to play the ABC song, available without internet connectivity.</li>
                 </ul>
+                <ul>
+                    <li><strong>Animal Song</strong>: Say “Hey Jarvis, play the animal song” to play the "Old Mcdonald had a farm" song, available without internet connectivity.</li>
+                </ul>
+                <ul>
+                    <li><strong>Twinkle twinkle Song</strong>: Say “Hey Jarvis, play the twinkle twinkle song” to play the "twinkle twinkle little star" song, available without internet connectivity.</li>
+                </ul>
+                <ul>
+                    <li><strong>The wheel goes round and round song</strong>: Say “Hey Jarvis, play the round and round song” to play the "Wheels of the bus go round and round" song, available without internet connectivity.</li>
+                </ul>                                                
             </details>
             
             <details>
