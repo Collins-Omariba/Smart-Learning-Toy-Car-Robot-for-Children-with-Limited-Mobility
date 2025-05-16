@@ -1453,14 +1453,14 @@ class WakeStreamingSatellite(SatelliteBase):
                     elif "move backwards" in transcript_lower:
                         CUSTOM_LOGGER.info("Move backwards detected")
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_backward.py"])
-                    elif "move in a square" in transcript_lower:
-                        CUSTOM_LOGGER.info("Move in square detected")
+                    elif "draw a square" in transcript_lower:
+                        CUSTOM_LOGGER.info("Draw square detected")
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_square.py"])
-                    elif "move in a triangle" in transcript_lower:
-                        CUSTOM_LOGGER.info("Move in triangle detected")
+                    elif "draw a triangle" in transcript_lower:
+                        CUSTOM_LOGGER.info("Draw a triangle detected")
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_triangle.py"])
-                    elif "move in a rectangle" in transcript_lower:
-                        CUSTOM_LOGGER.info("Move in rectangle detected")
+                    elif "draw a rectangle" in transcript_lower:
+                        CUSTOM_LOGGER.info("Draw a rectangle detected")
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_rectangle.py"])
                     elif "go right" in transcript_lower:
                         CUSTOM_LOGGER.info("Turn right detected")
