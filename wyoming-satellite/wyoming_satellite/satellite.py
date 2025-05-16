@@ -1470,7 +1470,16 @@ class WakeStreamingSatellite(SatelliteBase):
                         await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/motor_run_files/motor_run_left.py"])         
                     elif "play the abc" in transcript_lower: 
                         CUSTOM_LOGGER.info("Alphabet song request detected")
-                        await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/offline_content/abc_song.py"])                                                            
+                        await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/offline_content/abc_song.py"])
+                    elif "play the animal" in transcript_lower: 
+                        CUSTOM_LOGGER.info("Farm song request detected")
+                        await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/offline_content/farm_song.py"])                                                                                    
+                    elif "play the twinkle twinkle" in transcript_lower: 
+                        CUSTOM_LOGGER.info("Star song request detected")
+                        await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/offline_content/star_song.py"])
+                    elif "play the round and round" in transcript_lower: 
+                        CUSTOM_LOGGER.info("Bus song request detected")
+                        await asyncio.to_thread(subprocess.run, ["python3", "/home/fyp213/offline_content/bus_song.py"])                                                                        
                     else:
                         # Process non-motor commands with age-appropriate instructions
                         age = self.get_child_age()
