@@ -153,7 +153,7 @@ def index():
             </form>
             <div class="button-container">
                 <a href="/manual" class="manual-button">View User Manual</a>
-                <a href="/restart_services" class="restart-button">Restart Robot Services</a>
+                <a href="/restart_services" class="restart-button" onclick="return confirm('Are you sure you want to restart the robot services?')">Restart Robot Services</a>
                 <a href="/logs" class="logs-button">View Logs</a>
                 <a href="/poweroff" class="poweroff-button" onclick="return confirm('Are you sure you want to power off the robot?')">Power Off</a>
             </div>
