@@ -1488,7 +1488,7 @@ class WakeStreamingSatellite(SatelliteBase):
                         else:
                             prompt_instructions = "You are an AI assistant for children aged 8-12. Provide clear, concise, and informative answers. FOR QUESTIONS KEEP THEM VERY SHORT.DON'T USE ASTERISKS AT ALL IN YOUR RESPONSES"
                         
-                        CUSTOM_LOGGER.debug(f"Sending transcript to Gemini API with age-appropriate instructions with prompt {prompt_instructions}")
+                        CUSTOM_LOGGER.debug(f"Sending transcript {transcript} to Gemini API")
                         response = self.gemini_client.generate_content([prompt_instructions, transcript])
                         gemini_text = response.text
                         CUSTOM_LOGGER.debug(f"Gemini response: {gemini_text}")
