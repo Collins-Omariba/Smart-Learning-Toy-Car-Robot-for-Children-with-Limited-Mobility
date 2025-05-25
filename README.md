@@ -135,6 +135,10 @@ The original `WakeStreamingSatellite` class relied heavily on server-based proce
 - **Original**: No feedback on connection status.
 - **Modification**: Provides feedback if no wifi connection is available.
 
+### 16. Song playing(offline content)
+- **Original**: No offline content playback.
+- **Modification**: Plays a song when the robot receives a specific voice command.
+
 ---
 
 ## Component Overview
@@ -225,6 +229,7 @@ The LEDs provide intuitive visual feedback:
 | Configuration | Server-oriented | Local file paths |
 | TTS | Server-based| Local quering of piper TTS |
 | STT | Server-based | Local Whisper model |
+| Songs(Offline content) | None | Offline content playback (songs) |
 
 ---
 
@@ -236,7 +241,10 @@ These changes make the toy:
 - **Age-aware and educational**  
 - **Engaging through lights and motion**  
 - **Naturally conversational**
-- **Can give feedback if there is no wifi connection and also has offline playback content**
+- **Can give feedback if there is no wifi connection**
+- **Has offline playback content(songs) i.e. Can play songs**
+- **Has a local web app for user interface**
+
 - **Have a great user interface via the flask web app**
 
 
