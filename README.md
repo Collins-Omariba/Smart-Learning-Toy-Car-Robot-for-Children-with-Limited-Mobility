@@ -1,10 +1,11 @@
 # Toy Car Robot Code
-
+For the mobile app code check out `https://github.com/Collins-Omariba/SIMPLE-ROBOT-CONTROL-ANDROID-APP.git`
 #### The main code in this project is in the `wyoming-satellite` folder and is a modified version of https://github.com/rhasspy/wyoming-satellite. Read below for more information on the modifications made to the code. Refer to the original repository for more information on the original code.
 
 CHECK `standalone-bot` (The currently default and main version) branch for the code of the standalone bot also available in `main` branch. This is able to operate without the server
 
 CHECK `server+bot` branch for the code of the server + bot. This is unable to operate without the server and is not being updated anymore. It is only here for reference and to show the original code.
+
 
 # Installation Instructions
 
